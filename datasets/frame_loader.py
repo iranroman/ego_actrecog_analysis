@@ -35,7 +35,8 @@ def get_start_end_idx(video_size, clip_size, clip_idx, num_clips):
         start_idx = random.uniform(0, delta)
     else:
         # Uniformly sample the clip with the given index.
-        start_idx = delta * clip_idx / num_clips
+        #start_idx = delta * clip_idx / num_clips
+        start_idx = random.uniform(0, delta) # sample only one time.
     end_idx = start_idx + clip_size - 1
     return start_idx, end_idx
 

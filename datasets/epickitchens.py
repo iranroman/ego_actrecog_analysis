@@ -14,9 +14,10 @@ from .frame_loader import pack_frames_to_video_clip
 
 #logger = logging.get_logger(__name__)
 
+
 class Epickitchens(torch.utils.data.Dataset):
 
-    def __init__(self, cfg, mode):
+    def __init__(self, cfg, mode, model=None):
 
         assert mode in [
             "train",
@@ -24,8 +25,13 @@ class Epickitchens(torch.utils.data.Dataset):
             "test",
             "train+val"
         ], "Split '{}' not supported for EPIC-KITCHENS".format(mode)
+        assert model in [
+            None,
+            "omnivore",
+        ], "Model '{}' not supported for this dataset".format(model)
         self.cfg = cfg
         self.mode = mode
+        self.model = model
         self.target_fps = 60
         # For training or validation mode, one single clip is sampled from every
         # video. For testing, NUM_ENSEMBLE_VIEWS clips are sampled from every
@@ -33,13 +39,50 @@ class Epickitchens(torch.utils.data.Dataset):
         # the frames.
         if self.mode in ["train", "val", "train+val"]:
             self._num_clips = 1
-        #elif self.mode in ["test"]:
-        #    self._num_clips = (
-        #            cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
-        #    )
+        elif self.mode in ["test"]:
+            self._num_clips = (
+                    cfg.TEST.NUM_SPATIAL_CROPS
+            )
+        if model == 'omnivore':
+            self.action2index, self.verb2index, self.noun2index = self._load_omnivore_indices()
 
         #logger.info("Constructing EPIC-KITCHENS {}...".format(mode))
         self._construct_loader()
+        self.index2verb, self.index2noun = self._get_index_dicts()
+
+    def _load_omnivore_indices(self):
+        with open('model_metadata/epic_action_classes.csv') as f:
+            data = f.read().splitlines()
+        action2index = {d:i for i,d in enumerate(data)}
+
+        verb_noun = pd.read_csv('model_metadata/epic_action_classes.csv', names=['verb','noun'])
+        verbs = verb_noun['verb'].unique()
+        nouns = verb_noun['noun'].unique()
+        
+        verb2index = {}
+        for verb in verbs:
+            verb2index[verb] = [v for k,v in action2index.items() if k.split(',')[0]==verb]
+        noun2index = {}
+        for noun in nouns:
+            noun2index[noun] = [v for k,v in action2index.items() if k.split(',')[1]==noun]
+
+        return action2index, verb2index, noun2index
+
+
+    def _get_index_dicts(self):
+        
+        noun_classes = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, 'EPIC_100_noun_classes.csv'))
+        verb_classes = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, 'EPIC_100_verb_classes.csv'))
+
+        index2verb = pd.Series(verb_classes.key.values, index=verb_classes.id).to_dict()
+        index2noun = pd.Series(noun_classes.key.values, index=noun_classes.id).to_dict()
+
+        return index2verb, index2noun
+
+    def _label2verbnounpair(self, label):
+        verb = self.index2verb[label['verb']]
+        noun = self.index2noun[label['noun']]
+        return f'{verb},{noun}'
 
     def _construct_loader(self):
         """
@@ -50,7 +93,9 @@ class Epickitchens(torch.utils.data.Dataset):
         elif self.mode == "val":
             path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VAL_LIST)]
         elif self.mode == "test":
-            path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
+            #path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
+            path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VAL_LIST)]
+            # "testing" on the validation set due to lack of labels on the actual test set
         else:
             path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, file)
                                        for file in [self.cfg.EPICKITCHENS.TRAIN_LIST, self.cfg.EPICKITCHENS.VAL_LIST]]
@@ -100,6 +145,25 @@ class Epickitchens(torch.utils.data.Dataset):
             min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
             max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]
             crop_size = self.cfg.DATA.TRAIN_CROP_SIZE
+        elif self.mode in ["test"]:
+            temporal_sample_index = (
+                self._spatial_temporal_idx[index]
+                // self.cfg.TEST.NUM_SPATIAL_CROPS
+            )
+            # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
+            # center, or right if width is larger than height, and top, middle,
+            # or bottom if height is larger than width.
+            if self.cfg.TEST.NUM_SPATIAL_CROPS == 3:
+                spatial_sample_index = (
+                    self._spatial_temporal_idx[index]
+                    % self.cfg.TEST.NUM_SPATIAL_CROPS
+                )
+            elif self.cfg.TEST.NUM_SPATIAL_CROPS == 1:
+                spatial_sample_index = 1
+            min_scale, max_scale, crop_size = [self.cfg.DATA.TEST_CROP_SIZE] * 3
+            # The testing is deterministic and no jitter should be performed.
+            # min_scale, max_scale, and crop_size are expect to be the same.
+            assert len({min_scale, max_scale, crop_size}) == 1
         else:
             raise NotImplementedError(
                 "Does not support {} mode".format(self.mode)
@@ -123,8 +187,17 @@ class Epickitchens(torch.utils.data.Dataset):
             crop_size=crop_size,
         )
         
-        label = self._video_records[index].label
         metadata = self._video_records[index].metadata
+        if self.model:
+            if self.model == 'omnivore':
+                action_label = self._label2verbnounpair(self._video_records[index].label)
+                verb_label, noun_label = action_label.split(',')
+                action_index = self.action2index[action_label]
+                verb_index = self.verb2index[verb_label]
+                noun_index = self.noun2index[noun_label]
+            return frames, action_index, verb_index, noun_index, metadata
+        else:
+            label = self._video_records[index].label
         return frames, label, index, metadata
 
 

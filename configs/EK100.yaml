@@ -10,5 +10,10 @@ DATA:
   TRAIN_CROP_SIZE: 224
   TEST_CROP_SIZE: 256
   INPUT_CHANNEL_NUM: [3, 3]
-  MEAN: [0.45, 0.45, 0.45] # The mean value of the video raw pixels across the R G B channels. 
-  STD: [0.45, 0.45, 0.45] # The std value of the video raw pixels across the R G B channels. 
+  #MEAN: [0.45, 0.45, 0.45] # The mean value of the video raw pixels across the R G B channels. 
+  #STD: [0.45, 0.45, 0.45] # The std value of the video raw pixels across the R G B channels. 
+  MEAN: [0.485, 0.456, 0.406] # omnivore values
+  STD: [0.229, 0.224, 0.225] # omnivore values
+TEST:
+  NUM_SPATIAL_CROPS: 3 # number of crops used in the omnivore paper, according to the omnivore paper
+  NUM_ENSEMBLE_VIEWS: 1 # number of samples drawn from the action instance, according to the omnivore paper
