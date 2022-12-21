@@ -1,0 +1,14 @@
+EPICKITCHENS:
+  ANNOTATIONS_DIR: datasets/epic-kitchens-100-annotations
+  VISUAL_DATA_DIR: /datasets/EPIC-KITCHENS
+  TRAIN_LIST: "EPIC_100_train.pkl"
+  VAL_LIST: "EPIC_100_validation.pkl"
+DATA:
+  NUM_FRAMES: 32
+  SAMPLING_RATE: 2
+  TRAIN_JITTER_SCALES: [256, 320]
+  TRAIN_CROP_SIZE: 224
+  TEST_CROP_SIZE: 256
+  INPUT_CHANNEL_NUM: [3, 3]
+  MEAN: [0.45, 0.45, 0.45] # The mean value of the video raw pixels across the R G B channels. 
+  STD: [0.45, 0.45, 0.45] # The std value of the video raw pixels across the R G B channels. 
