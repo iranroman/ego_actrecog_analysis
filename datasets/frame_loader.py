@@ -36,7 +36,8 @@ def get_start_end_idx(video_size, clip_size, clip_idx, num_clips):
     else:
         # Uniformly sample the clip with the given index.
         #start_idx = delta * clip_idx / num_clips
-        start_idx = random.uniform(0, delta) # sample only one time.
+        #start_idx = random.uniform(0, delta)
+        start_idx = delta//2 # sample the center of the action.
     end_idx = start_idx + clip_size - 1
     return start_idx, end_idx
 
@@ -101,6 +102,7 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
     frame_idx = temporal_sampling(video_record.num_frames,
                                   start_idx, end_idx, num_samples,
                                   start_frame=video_record.start_frame)
+    #print([img_tmpl.format(idx.item()) for idx in frame_idx])
     img_paths = [os.path.join(path_to_video, img_tmpl.format(idx.item())) for idx in frame_idx]
     frames = retry_load_images(img_paths)
     return frames

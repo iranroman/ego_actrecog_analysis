@@ -187,15 +187,15 @@ class Epickitchens(torch.utils.data.Dataset):
             crop_size=crop_size,
         )
         
-        metadata = self._video_records[index].metadata
+        #metadata = self._video_records[index].metadata
         if self.model:
             if self.model == 'omnivore':
                 action_label = self._label2verbnounpair(self._video_records[index].label)
-                verb_label, noun_label = action_label.split(',')
+                #verb_label, noun_label = action_label.split(',')
                 action_index = self.action2index[action_label]
-                verb_index = self.verb2index[verb_label]
-                noun_index = self.noun2index[noun_label]
-            return frames, action_index, verb_index, noun_index, metadata
+                #verb_index = self.verb2index[verb_label]
+                #noun_index = self.noun2index[noun_label]
+            return frames, action_index#, verb_index, noun_index, metadata
         else:
             label = self._video_records[index].label
         return frames, label, index, metadata
