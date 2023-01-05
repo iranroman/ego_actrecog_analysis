@@ -29,11 +29,13 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def start_frame(self):
-        return int(round(timestamp_to_sec(self._series['start_timestamp']) * self.fps))
+        #return int(round(timestamp_to_sec(self._series['start_timestamp']) * self.fps))
+        return self._series['start_frame']
 
     @property
     def end_frame(self):
-        return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.fps))
+        #return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.fps))
+        return self._series['stop_frame']
 
     @property
     def fps(self):
@@ -42,7 +44,7 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def num_frames(self):
-        return self.end_frame - self.start_frame
+        return self.end_frame - self.start_frame + 1
 
     @property
     def label(self):

@@ -24,7 +24,7 @@ def main(cfg, model):
     if model == 'omnivore':
         # Pick a pretrained model 
         model_name = "omnivore_swinB_epic"
-        model = torch.hub.load("facebookresearch/omnivore:main", model=model_name, force_reload=True)
+        model = torch.hub.load("facebookresearch/omnivore:main", model=model_name)#, force_reload=True)
 
     # Set to eval mode and move to desired device
     model = model.to(device)

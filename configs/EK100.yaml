@@ -19,3 +19,5 @@ DATA:
 TEST:
   NUM_SPATIAL_CROPS: 1 # number of crops used in the omnivore paper is 3
   NUM_ENSEMBLE_VIEWS: 1 # number of samples drawn from the action instance, according to the omnivore paper
+MODEL:
+  CHECKPOINT: 'swinB_epic_checkpoint.torch'
