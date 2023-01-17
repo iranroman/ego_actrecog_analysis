@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-# sourced from:
-# https://github.com/epic-kitchens/epic-kitchens-slowfast/blob/bf505199eb7d0b68adf2c8dcd847bc5b73949642/slowfast/datasets/transform.py
 
 import math
 import numpy as np
@@ -32,6 +30,7 @@ def random_short_side_scale_jitter(images, min_size, max_size, boxes=None):
     if (width <= height and width == size) or (
         height <= width and height == size
     ):
+        print('here!!!!!!!!!')
         return images, boxes
     new_width = size
     new_height = size
@@ -377,6 +376,7 @@ def color_normalization(images, mean, stddev):
             `num frames` x `channel` x `height` x `width`.
         mean (list): mean values for normalization.
         stddev (list): standard deviations for normalization.
+
     Returns:
         out_images (tensor): the noramlized images, the dimension is
             `num frames` x `channel` x `height` x `width`.
@@ -390,4 +390,4 @@ def color_normalization(images, mean, stddev):
     for idx in range(len(mean)):
         out_images[:, idx] = (images[:, idx] - mean[idx]) / stddev[idx]
 
-    return color_normalization
+    return out_images

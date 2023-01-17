@@ -1,5 +1,3 @@
-# modified from:
-# github.com/epic-kitchens/epic-kitchens-slowfast/blob/bf505199eb7d0b68adf2c8dcd847bc5b73949642/slowfast/datasets/epickitchens_record.py
 from .video_record import VideoRecord
 from datetime import timedelta
 import time
@@ -29,13 +27,11 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def start_frame(self):
-        #return int(round(timestamp_to_sec(self._series['start_timestamp']) * self.fps))
-        return self._series['start_frame']
+        return int(round(timestamp_to_sec(self._series['start_timestamp']) * self.fps))
 
     @property
     def end_frame(self):
-        #return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.fps))
-        return self._series['stop_frame']
+        return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.fps))
 
     @property
     def fps(self):
@@ -44,7 +40,7 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def num_frames(self):
-        return self.end_frame - self.start_frame + 1
+        return self.end_frame - self.start_frame
 
     @property
     def label(self):
