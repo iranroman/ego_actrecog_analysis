@@ -1057,10 +1057,14 @@ class EPICTestMeter(object):
 
         verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks)
         noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks)
+        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks)
 
         assert len({len(ks), len(verb_topks)}) == 1
         assert len({len(ks), len(noun_topks)}) == 1
+        assert len({len(ks), len(actn_topks)}) == 1
         stats = {"split": "test_final"}
+        for k, actn_topk in zip(ks, actn_topks):
+            stats["action_top{}_acc".format(k)] = "{:.{prec}f}".format(actn_topk, prec=2)
         for k, verb_topk in zip(ks, verb_topks):
             stats["verb_top{}_acc".format(k)] = "{:.{prec}f}".format(verb_topk, prec=2)
         for k, noun_topk in zip(ks, noun_topks):

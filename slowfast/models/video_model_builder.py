@@ -411,6 +411,8 @@ class Omnivore(nn.Module):
         y = self.omni(x, input_type="video")
 
         # must relocate the following to be able to train
+        # using these matrices will also make it impossible to
+        # get topk accuracies for k>1
         verb_noun_index = torch.argmax(y,dim=-1, keepdims=True)
         y_hardmax = torch.zeros_like(y).scatter_(1, verb_noun_index, 1.0)
         verb = y_hardmax @ self.verb_matrix
