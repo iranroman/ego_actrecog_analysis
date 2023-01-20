@@ -12,8 +12,9 @@ setuptools.setup(
     entry_points={'console_scripts': []},
     install_requires=[
         'torch', 'numpy', 'fvcore',
-        # slowfast
-        'detectron2',
+        'torchvision',
+        ## slowfast
+        #'detectron2 @ git+ssh://git@github.com/facebookresearch/detectron2.git',
         # auditory slowfast
         'librosa',
         # mtcn
