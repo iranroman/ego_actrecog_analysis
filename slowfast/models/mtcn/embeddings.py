@@ -41,27 +41,25 @@ class FeatureEmbedding(nn.Module):
         self.embed_actions = embed_actions
 
     def forward(self, inputs):
-        # Project audio and visual features to a lower dim
+        pos_embed = self.positional_embedding[:, :-self.num_cls_embeddings, :].repeat_interleave(self.num_clips, dim=1)
+
+        # Project visual features to a lower dim
         vis_embed = self.dropout_v(inputs[:, :self.seq_len * self.num_clips, :self.visual_input_dim])
-        if self.audio:
-            aud_embed = self.dropout_a(inputs[:, self.seq_len * self.num_clips:, :self.audio_input_dim])
         vis_embed = self.visual_projection(vis_embed)
         vis_embed = self.visual_relu(vis_embed)
+        vis_embed = vis_embed + pos_embed
+        
         if self.audio:
+            # do the same for audio inputs
+            aud_embed = self.dropout_a(inputs[:, self.seq_len * self.num_clips:, :self.audio_input_dim])
             aud_embed = self.audio_projection(aud_embed)
             aud_embed = self.audio_relu(aud_embed)
-        if self.audio:
-            # Tag audio-visual inputs with positional and modality embeddings
-            vis_embed = vis_embed + \
-                        self.positional_embedding[:, :-self.num_cls_embeddings, :].repeat_interleave(self.num_clips, dim=1) + \
-                        self.visual_embedding
-            aud_embed = aud_embed + \
-                        self.positional_embedding[:, :-self.num_cls_embeddings, :].repeat_interleave(self.num_clips, dim=1) + \
-                        self.audio_embedding
-        else:
-            # Tag visual inputs with positional embeddings
-            vis_embed = vis_embed + \
-                        self.positional_embedding[:, :-self.num_cls_embeddings, :].repeat_interleave(self.num_clips, dim=1)
+            aud_embed = aud_embed + pos_embed
+
+            # Tag audio-visual inputs with modality embeddings
+            vis_embed += self.visual_embedding
+            aud_embed += self.audio_embedding
+
         if not self.embed_actions:
             # Tag verb/noun embeddings with positional embeddings
             verb_embed = self.verb_embedding + self.positional_embedding[:, -2, :]
@@ -72,16 +70,11 @@ class FeatureEmbedding(nn.Module):
             # Tag action embedding with positional embeddings
             action_embed = self.action_embedding + self.positional_embedding[:, -1, :]
             action_embed = action_embed.expand(vis_embed.shape[0], -1, -1)
-        if self.audio:
-            if not self.embed_actions:
-                seq = torch.cat([vis_embed, aud_embed, verb_embed, noun_embed], 1)
-            else:
-                seq = torch.cat([vis_embed, aud_embed, action_embed], 1)
-        else:
-            if not self.embed_actions:
-                seq = torch.cat([vis_embed, verb_embed, noun_embed], 1)
-            else:
-                seq = torch.cat([vis_embed, action_embed], 1)
+        seq = torch.cat(
+            [vis_embed] + 
+            ([aud_embed] if self.audio else []) + 
+            ([verb_embed, noun_embed] if self.embed_actions else [action_embed])
+        )
         seq = self.dropout(seq)
         seq = seq.transpose(0, 1).contiguous()
         return seq

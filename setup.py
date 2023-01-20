@@ -25,4 +25,5 @@ setuptools.setup(
         # 'auditory_slowfast': ['librosa'],
         # 'mtcn': [],
     },
+    license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     keywords='slowfast auditory visual mtcn transformer multimodal temporal context action recognition kitchen verb noun epic-kitchens egocentric video')

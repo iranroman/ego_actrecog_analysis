@@ -8,7 +8,7 @@ __pycache__/
 
 # pytorch weights
 *.pt
-*.pth
+*.pyth
 
 # trash folders
 shh/

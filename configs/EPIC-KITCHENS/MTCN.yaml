@@ -31,6 +31,16 @@ RESNET:
   NUM_BLOCK_TEMP_KERNEL: [[3, 3], [4, 4], [6, 6], [3, 3]]
   SPATIAL_STRIDES: [[1, 1], [2, 2], [2, 2], [2, 2]]
   SPATIAL_DILATIONS: [[1, 1], [1, 1], [1, 1], [1, 1]]
+MTCN:
+    SEQ_LEN: 9  # 5
+    NUM_CLIPS: 10
+
+    # D_MODEL: 512
+    # DIM_FEEDFORWARD: 2048
+    # NHEAD: 8
+    NUM_LAYERS: 4  # 6
+    # DROPOUT_RATE: 0.1
+    AUDIO: true
 NONLOCAL:
   LOCATION: [[[], []], [[], []], [[], []], [[], []]]
   GROUP: [[1, 1], [1, 1], [1, 1], [1, 1]]
@@ -54,8 +64,8 @@ SOLVER:
   OPTIMIZING_METHOD: sgd
 MODEL:
   NUM_CLASSES: [97, 300]
-  ARCH: omnivore_swinB_epic
-  MODEL_NAME: mtcn
+  ARCH: slowfast
+  MODEL_NAME: MTCN
   LOSS_FUNC: cross_entropy
   DROPOUT_RATE: 0.5
 TEST:

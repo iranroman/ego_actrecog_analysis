@@ -108,7 +108,7 @@ class FuseFastToSlow(nn.Module):
 
 
 @MODEL_REGISTRY.register()
-class SlowFast(nn.Module):
+class AuditorySlowFast(nn.Module):
     """
     SlowFast model builder for SlowFast network.
 
@@ -128,7 +128,7 @@ class SlowFast(nn.Module):
             cfg (CfgNode): model building configs, details are in the
                 comments of the config file.
         """
-        super(SlowFast, self).__init__()
+        super(AuditorySlowFast, self).__init__()
         self.norm_module = get_norm(cfg)
         self.num_pathways = 2
         self._construct_network(cfg)
@@ -288,27 +288,30 @@ class SlowFast(nn.Module):
             norm_module=self.norm_module,
         )
 
-        self.head = head_helper.ResNetBasicHead(
-            dim_in=[
-                width_per_group * 32,
-                width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
-            ],
-            num_classes=cfg.MODEL.NUM_CLASSES if len(cfg.MODEL.NUM_CLASSES) > 1 else cfg.MODEL.NUM_CLASSES[0],
-            pool_size=[
-                [
-                    cfg.AUDIO_DATA.NUM_FRAMES
-                    // cfg.SLOWFAST.ALPHA // 4
-                    // pool_size[0][0],
-                    cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[0][1],
+        if cfg.MODEL.NUM_CLASSES:
+            self.head = head_helper.ResNetBasicHead(
+                dim_in=[
+                    width_per_group * 32,
+                    width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
                 ],
-                [
-                    cfg.AUDIO_DATA.NUM_FRAMES // 4 // pool_size[1][0],
-                    cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[1][1],
+                num_classes=cfg.MODEL.NUM_CLASSES if len(cfg.MODEL.NUM_CLASSES) > 1 else cfg.MODEL.NUM_CLASSES[0],
+                pool_size=[
+                    [
+                        cfg.AUDIO_DATA.NUM_FRAMES
+                        // cfg.SLOWFAST.ALPHA // 4
+                        // pool_size[0][0],
+                        cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[0][1],
+                    ],
+                    [
+                        cfg.AUDIO_DATA.NUM_FRAMES // 4 // pool_size[1][0],
+                        cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[1][1],
+                    ],
                 ],
-            ],
-            dropout_rate=cfg.MODEL.DROPOUT_RATE,
-            act_func=cfg.MODEL.HEAD_ACT,
-        )
+                dropout_rate=cfg.MODEL.DROPOUT_RATE,
+                act_func=cfg.MODEL.HEAD_ACT,
+            )
+        else:
+            self.head = None
 
     def forward(self, x, bboxes=None):
         x = self.s1(x)
@@ -323,7 +326,8 @@ class SlowFast(nn.Module):
         x = self.s4(x)
         x = self.s4_fuse(x)
         x = self.s5(x)
-        x = self.head(x)
+        if self.head is not None:
+            x = self.head(x)
         return x
 
     def freeze_fn(self, freeze_mode):

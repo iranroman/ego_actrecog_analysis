@@ -86,31 +86,44 @@ So, after downloading the dataset navigate under <participant_id>/rgb_frames for
 ## Training/validation
 To train the model run:
 ```
-python tools/run_net.py --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml NUM_GPUS num_gpus 
-OUTPUT_DIR /path/to/output_dir EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
-EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations TRAIN.CHECKPOINT_FILE_PATH /path/to/SLOWFAST_8x8_R50.pkl
+python tools/run_net.py \
+  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \
+  OUTPUT_DIR /path/to/output_dir \
+  EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset \
+  EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations \
+  TRAIN.CHECKPOINT_FILE_PATH /path/to/SLOWFAST_8x8_R50.pkl
 ```
 To validate the model run:
 ```
-python tools/run_net.py --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml NUM_GPUS num_gpus 
-OUTPUT_DIR /path/to/experiment_dir EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
-EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations TRAIN.ENABLE False TEST.ENABLE True 
-TEST.CHECKPOINT_FILE_PATH /path/to/experiment_dir/checkpoints/checkpoint_best.pyth
+python tools/run_net.py \
+  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \ 
+  OUTPUT_DIR /path/to/experiment_dir \
+  EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset \
+  EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations \
+  TRAIN.ENABLE False TEST.ENABLE True \
+  TEST.CHECKPOINT_FILE_PATH /path/to/experiment_dir/checkpoints/checkpoint_best.pyth
 ```
 After tuning the model's hyperparams using the validation set, we train the model that will be used for obtaining the test set's scores on the concatenation of the training and validation sets. To train the model on the concatenation of the training and validation sets run:
 ```
-python tools/run_net.py --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml NUM_GPUS num_gpus 
-OUTPUT_DIR /path/to/output_dir EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
-EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations EPICKITCHENS.TRAIN_PLUS_VAL True 
-TRAIN.CHECKPOINT_FILE_PATH /path/to/SLOWFAST_8x8_R50.pkl
+python tools/run_net.py \
+  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \
+  OUTPUT_DIR /path/to/output_dir \
+  EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset \
+  EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations \
+  EPICKITCHENS.TRAIN_PLUS_VAL True \
+  TRAIN.CHECKPOINT_FILE_PATH /path/to/SLOWFAST_8x8_R50.pkl
 ```
 To obtain scores on the test set (using the model trained on the concatenation of the training and validation sets) run:
 ```
-python tools/run_net.py --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml NUM_GPUS num_gpus 
-OUTPUT_DIR /path/to/experiment_dir EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
-EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations TRAIN.ENABLE False TEST.ENABLE True 
-TEST.CHECKPOINT_FILE_PATH /path/to/experiment_dir/checkpoints/checkpoint_best.pyth 
-EPICKITCHENS.TEST_LIST EPIC_100_test_timestamps.pkl EPICKITCHENS.TEST_SPLIT test
+python tools/run_net.py \
+  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \
+  OUTPUT_DIR /path/to/experiment_dir \
+  EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset \
+  EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations \
+  TRAIN.ENABLE False TEST.ENABLE True \
+  TEST.CHECKPOINT_FILE_PATH /path/to/experiment_dir/checkpoints/checkpoint_best.pyth \
+  EPICKITCHENS.TEST_LIST EPIC_100_test_timestamps.pkl \
+  EPICKITCHENS.TEST_SPLIT test
 ```
 
 ## License 

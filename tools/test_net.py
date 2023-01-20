@@ -98,6 +98,20 @@ def perform_test(test_loader, model, test_meter, cfg):
     test_meter.reset()
     return preds, labels, metadata
 
+
+def _load_nested_checkpoint(model, path, num_gpus):
+    if path is None:
+        return 
+
+    # recursively load checkpoints - for heterogeneous models - allow path to be a nested dict
+    if isinstance(path, dict):
+        for k, p in path.items():
+            _load_nested_checkpoint(getattr(model, k), p, num_gpus)
+        return
+
+    # finally load the checkpoint
+    cu.load_checkpoint(path, model, num_gpus > 1, None, inflation=False)
+
 def test(cfg):
     """
     Perform multi-view testing on the pretrained video model.
@@ -119,20 +133,12 @@ def test(cfg):
     # Build the video model and print model statistics.
     model = build_model(cfg)
     if du.is_master_proc():
-        if cfg.MODEL.MODEL_NAME == 'SlowFast':
-            misc.log_model_info(model, cfg, is_train=False)
+        #if cfg.MODEL.MODEL_NAME == 'SlowFast':
+        misc.log_model_info(model, cfg, is_train=False)
         # TODO: make it work with Omnivore
 
-    if cfg.MODEL.MODEL_NAME == 'SlowFast':
     # Load a checkpoint to test if applicable.
-        cu.load_checkpoint(
-            cfg.TEST.CHECKPOINT_FILE_PATH,
-            model,
-            cfg.NUM_GPUS > 1,
-            None,
-            inflation=False,
-            convert_from_caffe2=cfg.TEST.CHECKPOINT_TYPE == "caffe2",
-        )
+    _load_nested_checkpoint(model, cfg.TEST.CHECKPOINT_FILE_PATH, num_gpus=cfg.NUM_GPUS)
 
     # Create video testing loaders.
     test_loader = loader.construct_loader(cfg, "test")
