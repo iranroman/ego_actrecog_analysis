@@ -37,6 +37,14 @@ and
 }
 ```
 
+## Models
+The models used in this project:
+ - [SlowFast](https://github.com/epic-kitchens/epic-kitchens-slowfast)
+ - [Auditory SlowFast](https://github.com/ekazakos/auditory-slow-fast)
+ - [Omnivore](https://github.com/facebookresearch/omnivore)
+ - [MTCN](https://github.com/ekazakos/MTCN)
+ - [TSM]()
+
 
 ## Pretrained models
 
