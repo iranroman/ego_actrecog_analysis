@@ -357,6 +357,9 @@ _C.SOLVER.BASE_LR = 0.1
 # Learning rate policy (see utils/lr_policy.py for options and examples).
 _C.SOLVER.LR_POLICY = "cosine"
 
+# Final learning rates for 'cosine' policy.
+_C.SOLVER.COSINE_END_LR = 0.0
+
 # Exponential decay factor.
 _C.SOLVER.GAMMA = 0.1
 

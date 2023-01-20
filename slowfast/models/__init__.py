@@ -3,4 +3,8 @@
 
 from .build import MODEL_REGISTRY, build_model  # noqa
 #from .video_model_builder import ResNet, SlowFast  # noqa
-from .video_model_builder import SlowFast  # noqa
+
+from .omnivore import Omnivore
+from .auditory_slow_fast import SlowFast as AuditorySlowFast
+from .slow_fast import SlowFast
+from .mtcn import MTCN
