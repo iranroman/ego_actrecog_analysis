@@ -96,7 +96,7 @@ python tools/run_net.py \
 To validate the model run:
 ```
 python tools/run_net.py \
-  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \ 
+  --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \
   OUTPUT_DIR /path/to/experiment_dir \
   EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset \
   EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations \

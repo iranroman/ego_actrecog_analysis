@@ -25,7 +25,7 @@ class MTCN(nn.Module):
             self.audio_encoder = AuditorySlowFast(cfg_enc)
 
         # audio-visual cross attention
-        self.transformer = MTCN_AV(
+        self.cross = MTCN_AV(
             num_class=cfg.MODEL.NUM_CLASSES,
             visual_input_dim=cfg.RESNET.WIDTH_PER_GROUP * 32,
             audio_input_dim=cfg.RESNET.WIDTH_PER_GROUP * 32,
@@ -45,5 +45,5 @@ class MTCN(nn.Module):
             Z = Zv[:, None]
 
         # cross-attention
-        Y = self.transformer(Z)
+        Y = self.cross(Z)
         return Y
