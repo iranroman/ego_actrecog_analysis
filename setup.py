@@ -17,8 +17,15 @@ setuptools.setup(
         #'detectron2 @ git+ssh://git@github.com/facebookresearch/detectron2.git',
         # auditory slowfast
         'librosa',
-        # mtcn
+        # omnivore
+        'pandas', 
 
+        # test
+        'simplejson', 'matplotlib', 
+        # ava dataset
+        'opencv-python', 
+        # kinetics
+        'av',
     ],
     extras_require={
         # 'slowfast': ['detectron2'],

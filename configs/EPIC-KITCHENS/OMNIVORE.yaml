@@ -69,7 +69,7 @@ DATA_LOADER:
   PIN_MEMORY: True
 EPICKITCHENS:
   TRAIN_PLUS_VAL: False
-NUM_GPUS: 8     # ✓✓✓✓✓✓
+# NUM_GPUS: 8     # ✓✓✓✓✓✓
 NUM_SHARDS: 1   # ✓✓✓✓✓✓
 RNG_SEED: 0     # ✓✓✓✓✓✓
 OUTPUT_DIR: .   # ✓✓✓✓✓✓

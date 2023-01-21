@@ -36,10 +36,10 @@ import pprint
 import time
 from collections import defaultdict
 
-from slowfast.utils.ava_evaluation import (
-    object_detection_evaluation,
-    standard_fields,
-)
+# from slowfast.utils.ava_evaluation import (
+#     object_detection_evaluation,
+#     standard_fields,
+# )
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from ..auditory_slow_fast import AuditorySlowFast
 from ..slow_fast import SlowFast  # noqa
 
 
-@MODEL_REGISTRY.register()
+@MODEL_REGISTRY.register
 class MTCN(nn.Module):
     def __init__(self, cfg):
         # create config copy so encoders return embeddings instead
@@ -34,14 +34,15 @@ class MTCN(nn.Module):
             audio=cfg.MTCN.AUDIO)
 
     def forward(self, inputs):
-        video, audio = inputs
-
         # extract video+audio features
-        Zv = self.video_encoder(video)
         if self.audio_encoder is not None:
+            video, audio = inputs
+            Zv = self.video_encoder(video)
             Za = self.audio_encoder(audio)
             Z = torch.stack([Zv, Za], dim=1)
+        # video only
         else:
+            Zv = self.video_encoder(video)
             Z = Zv[:, None]
 
         # cross-attention

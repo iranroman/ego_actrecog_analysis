@@ -10,6 +10,8 @@ __pycache__/
 *.pt
 *.pyth
 
+output/
+
 # trash folders
 shh/
 shhh/

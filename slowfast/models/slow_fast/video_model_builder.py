@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import pandas as pd
 
-import slowfast.utils.weight_init_helper as init_helper
+from ...utils import weight_init_helper as init_helper
 
 from . import head_helper, resnet_helper, stem_helper
 from ..build import MODEL_REGISTRY

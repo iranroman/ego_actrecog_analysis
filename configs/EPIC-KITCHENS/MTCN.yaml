@@ -16,6 +16,7 @@ DATA:
   INPUT_CHANNEL_NUM: [3, 3]
   MEAN: [0.485, 0.456, 0.406]
   STD: [0.229, 0.224, 0.225]
+
 SLOWFAST:
   ALPHA: 4
   BETA_INV: 8
@@ -68,6 +69,10 @@ MODEL:
   MODEL_NAME: MTCN
   LOSS_FUNC: cross_entropy
   DROPOUT_RATE: 0.5
+
+  # +++
+  VIDEO: true
+  AUDIO: true
 TEST:
   ENABLE: False
   DATASET: epickitchens
@@ -79,7 +84,7 @@ DATA_LOADER:
   PIN_MEMORY: True
 EPICKITCHENS:
   TRAIN_PLUS_VAL: False
-NUM_GPUS: 8     # ✓✓✓✓✓✓
+# NUM_GPUS: 8     # ✓✓✓✓✓✓
 NUM_SHARDS: 1   # ✓✓✓✓✓✓
 RNG_SEED: 0     # ✓✓✓✓✓✓
 OUTPUT_DIR: .   # ✓✓✓✓✓✓

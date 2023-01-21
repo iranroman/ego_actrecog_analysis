@@ -19,6 +19,13 @@ from slowfast.utils.meters import AVAMeter, TestMeter, EPICTestMeter
 logger = logging.get_logger(__name__)
 
 
+def to_cuda_recursive(inputs, **kw):
+    if isinstance(inputs, dict):
+        return {k: to_cuda_recursive(x, **kw) for k, x in inputs.items()}
+    if isinstance(inputs, (list, tuple)):
+        return [to_cuda_recursive(x, **kw) for x in inputs]
+    return inputs.cuda(**kw)
+
 def perform_test(test_loader, model, test_meter, cfg):
     """
     For classification:
@@ -44,17 +51,8 @@ def perform_test(test_loader, model, test_meter, cfg):
 
     for cur_iter, (inputs, labels, video_idx, meta) in enumerate(test_loader):
         # Transfer the data to the current GPU device.
-        if isinstance(inputs, (list,)):
-            for i in range(len(inputs)):
-                inputs[i] = inputs[i].cuda(non_blocking=True)
-        else:
-            inputs = inputs.cuda(non_blocking=True)
-
-        # Transfer the data to the current GPU device.
-        if isinstance(labels, (dict,)):
-            labels = {k: v.cuda() for k, v in labels.items()}
-        else:
-            labels = labels.cuda()
+        inputs = to_cuda_recursive(inputs, non_blocking=True)
+        labels = to_cuda_recursive(labels)
         video_idx = video_idx.cuda()
 
         # Perform the forward pass.

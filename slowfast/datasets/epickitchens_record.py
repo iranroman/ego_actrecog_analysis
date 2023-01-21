@@ -16,6 +16,7 @@ class EpicKitchensVideoRecord(VideoRecord):
     def __init__(self, tup):
         self._index = str(tup[0])
         self._series = tup[1]
+        self.audio_sr = 24000
 
     @property
     def participant(self):
@@ -24,6 +25,14 @@ class EpicKitchensVideoRecord(VideoRecord):
     @property
     def untrimmed_video_name(self):
         return self._series['video_id']
+
+    @property
+    def start_time(self):
+        return timestamp_to_sec(self._series['start_timestamp'])
+
+    @property
+    def stop_time(self):
+        return timestamp_to_sec(self._series['stop_timestamp'])
 
     @property
     def start_frame(self):
@@ -43,9 +52,21 @@ class EpicKitchensVideoRecord(VideoRecord):
         return self.end_frame - self.start_frame
 
     @property
+    def start_audio_sample(self):
+        return int(round(timestamp_to_sec(self._series['start_timestamp']) * self.audio_sr))
+
+    @property
+    def end_audio_sample(self):
+        return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.audio_sr))
+
+    @property
+    def num_audio_samples(self):
+        return self.end_audio_sample - self.start_audio_sample
+
+    @property
     def label(self):
-        return {'verb': self._series['verb_class'] if 'verb_class' in self._series else -1,
-                'noun': self._series['noun_class'] if 'noun_class' in self._series else -1}
+        return {'verb': self._series.get('verb_class', -1),
+                'noun': self._series.get('noun_class', -1)}
 
     @property
     def metadata(self):

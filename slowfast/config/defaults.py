@@ -2,6 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 
 """Configs."""
+import os
+import torch
 from fvcore.common.config import CfgNode
 
 # -----------------------------------------------------------------------------
@@ -408,7 +410,7 @@ _C.SOLVER.OPTIMIZING_METHOD = "sgd"
 #############
 # ✓✓✓✓✓✓✓✓✓ #
 #############
-_C.NUM_GPUS = 1 
+_C.NUM_GPUS = torch.cuda.device_count() 
 
 # Number of machine to use for the job.
 #############
@@ -573,7 +575,7 @@ _C.EPICKITCHENS.VISUAL_DATA_DIR = ""
 #############
 # ✓✓✓✓✓✓✓✓✓ #
 #############
-_C.EPICKITCHENS.ANNOTATIONS_DIR = ""
+_C.EPICKITCHENS.ANNOTATIONS_DIR = os.path.abspath(os.path.join(__file__, '../../datasets/epic-kitchens-100-annotations'))  # they are a submodule of the repo
 
 _C.EPICKITCHENS.TRAIN_LIST = "EPIC_100_train.pkl"
 
