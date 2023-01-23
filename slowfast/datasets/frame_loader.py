@@ -30,7 +30,12 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
                                                  #video_record.participant,
                                                  video_record.untrimmed_video_name)
     img_tmpl = "frame_{:010d}.jpg"
-    if cfg.MODEL.MODEL_NAME == 'SlowFast':
+    if cfg.TEST.SLIDE:
+        # temporal_sample_index to frame index
+        end_idx = int(temporal_sample_index * cfg.TEST.HOP_SIZE * video_record.fps)
+        start_idx = int(end_idx - int(cfg.TEST.WIN_SIZE * video_record.fps) + 1)
+        frame_idx = temporal_sampling(video_record.num_frames, start_idx, end_idx, cfg.DATA.NUM_FRAMES, video_record.start_frame+1)
+    elif cfg.MODEL.MODEL_NAME == 'SlowFast':
         fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
         start_idx, end_idx = get_start_end_idx(
             video_record.num_frames,

@@ -116,6 +116,9 @@ _C.TEST.NUM_SPATIAL_CROPS = 3
 #############
 _C.TEST.CHECKPOINT_TYPE = "pytorch"
 
+_C.TEST.SLIDE = False
+_C.TEST.WIN_SIZE = 1.
+_C.TEST.HOP_SIZE = 1.
 
 # -----------------------------------------------------------------------------
 # ResNet options

@@ -43,6 +43,10 @@ class EpicKitchensVideoRecord(VideoRecord):
         return self.end_frame - self.start_frame
 
     @property
+    def dur_time(self):
+        return self.num_frames/self.fps
+
+    @property
     def label(self):
         return {'verb': self._series['verb_class'] if 'verb_class' in self._series else -1,
                 'noun': self._series['noun_class'] if 'noun_class' in self._series else -1}

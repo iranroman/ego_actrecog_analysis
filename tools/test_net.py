@@ -138,20 +138,31 @@ def test(cfg):
     test_loader = loader.construct_loader(cfg, "test")
     logger.info("Testing model for {} iterations".format(len(test_loader)))
 
-    assert (
-        len(test_loader.dataset)
-        % (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS)
-        == 0
-    )
+    if not cfg.TEST.SLIDE:
+        assert (
+            len(test_loader.dataset)
+            % (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS)
+            == 0
+        )
+
+
     # Create meters for multi-view testing.
     #if cfg.TEST.DATASET == 'epickitchens':
-    test_meter = EPICTestMeter(
-        len(test_loader.dataset)
-        // (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS),
-        cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS,
-        cfg.MODEL.NUM_CLASSES,
-        len(test_loader),
-    )
+    if not cfg.TEST.SLIDE:
+        test_meter = EPICTestMeter(
+            len(test_loader.dataset)
+            // (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS),
+            cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS,
+            cfg.MODEL.NUM_CLASSES,
+            len(test_loader),
+        )
+    else:
+        test_meter = EPICTestMeter(
+            len(test_loader.dataset),
+            1, # each window plays an equal weight on the metrics
+            cfg.MODEL.NUM_CLASSES,
+            len(test_loader),
+        )
 
     # Perform multi-view test on the entire dataset.
     preds, labels, metadata = perform_test(test_loader, model, test_meter, cfg)

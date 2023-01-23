@@ -60,17 +60,6 @@ def construct_loader(cfg, split):
             `val`, and `test`.
     """
     assert split in ["train", "val", "test", "train+val"]
-    #if split in ["train", "train+val"]:
-    #    dataset_name = cfg.TRAIN.DATASET
-    #    batch_size = int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
-    #    shuffle = True
-    #    drop_last = True
-    #elif split in ["val"]:
-    #    dataset_name = cfg.TRAIN.DATASET
-    #    batch_size = int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
-    #    shuffle = False
-    #    drop_last = False
-    #elif split in ["test"]:
     dataset_name = cfg.TEST.DATASET
     batch_size = int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
     shuffle = False
