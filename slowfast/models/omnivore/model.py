@@ -17,17 +17,17 @@ class Omnivore(nn.Module):
 
     def _get_output_transform_matrix(self, cfg):
         with open(os.path.join(os.path.dirname(__file__), 'omnivore_epic_action_classes.csv')) as f:
-            action2index = {d:i for i,d in enumerate(f.readlines())}
+            action2index = {d.strip(): i for i, d in enumerate(f.readlines())}
         verb_matrix = self._construct_matrix(action2index, os.path.join(cfg.EPICKITCHENS.ANNOTATIONS_DIR, 'EPIC_100_verb_classes.csv'), 0)
         noun_matrix = self._construct_matrix(action2index, os.path.join(cfg.EPICKITCHENS.ANNOTATIONS_DIR, 'EPIC_100_noun_classes.csv'), 1)
         return verb_matrix, noun_matrix
 
-    def _construct_matrix(self, action2index, fname, i):
+    def _construct_matrix(self, action2index, fname, i_a):
         classes = pd.read_csv(fname, usecols=['id', 'key']).set_index('id').key
         matrix = torch.zeros(len(action2index), len(classes))
         for i, x in enumerate(classes):
             for a, j in action2index.items():
-                if a.split(',')[i] == x:
+                if a.split(',')[i_a] == x:
                     matrix[j,i] = 1.
         return matrix
 

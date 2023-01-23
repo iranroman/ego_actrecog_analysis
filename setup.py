@@ -19,6 +19,10 @@ setuptools.setup(
         'librosa',
         # omnivore
         'pandas', 
+        'hydra-core',
+        'einops',
+        'timm',
+        'pytorchvideo',
 
         # test
         'simplejson', 'matplotlib', 

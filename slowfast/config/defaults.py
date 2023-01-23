@@ -34,6 +34,18 @@ _C.BN.NUM_BATCHES_PRECISE = 200
 # Weight decay value that applies on BN.
 _C.BN.WEIGHT_DECAY = 0.0
 
+# XXX: auditory
+# Norm type, options include `batchnorm`, `sub_batchnorm`, `sync_batchnorm`
+_C.BN.NORM_TYPE = "batchnorm"
+
+# Parameter for SubBatchNorm, where it splits the batch dimension into
+# NUM_SPLITS splits, and run BN on each of them separately independently.
+_C.BN.NUM_SPLITS = 1
+
+# Parameter for NaiveSyncBatchNorm2d, where the stats across `NUM_SYNC_DEVICES`
+# devices will be synchronized.
+_C.BN.NUM_SYNC_DEVICES = 1
+# XXX
 
 # ---------------------------------------------------------------------------- #
 # Training options.
@@ -60,6 +72,9 @@ _C.TRAIN.AUTO_RESUME = True
 
 # Path to the checkpoint to load the initial weight.
 _C.TRAIN.CHECKPOINT_FILE_PATH = ""
+
+# If the model needs multiple checkpoints, define them as a dict mirroring the model structure.
+_C.TRAIN.CHECKPOINT_FILE_PATHS = CfgNode(new_allowed=True)
 
 _C.TRAIN.FINETUNE = False
 
@@ -97,6 +112,9 @@ _C.TEST.BATCH_SIZE = 8
 # ✓✓✓✓✓✓✓✓✓ #
 #############
 _C.TEST.CHECKPOINT_FILE_PATH = ""
+
+# If the model needs multiple checkpoints, define them as a dict mirroring the model structure.
+_C.TEST.CHECKPOINT_FILE_PATHS = CfgNode(new_allowed=True)
 
 # Number of clips to sample from a video uniformly for aggregating the
 # prediction results.
@@ -179,6 +197,13 @@ _C.RESNET.SPATIAL_STRIDES = [[1], [2], [2], [2]]
 #############
 _C.RESNET.SPATIAL_DILATIONS = [[1], [1], [1], [1]]
 
+# XXX: auditory
+# Size of stride on different res stages.
+_C.RESNET.FREQUENCY_STRIDES = [[1], [2], [2], [2]]
+
+# Size of dilation on different res stages.
+_C.RESNET.FREQUENCY_DILATIONS = [[1], [1], [1], [1]]
+# XXX
 
 # -----------------------------------------------------------------------------
 # Nonlocal options
@@ -260,6 +285,30 @@ _C.MODEL.DROPOUT_RATE = 0.5
 #############
 _C.MODEL.FC_INIT_STD = 0.01
 
+# Activation layer for the output head.
+_C.MODEL.HEAD_ACT = "softmax" # XXX: auditory
+
+# does the model accept video?
+_C.MODEL.VIDEO = True
+
+# does the model accept audio?
+_C.MODEL.AUDIO = False
+
+
+# -----------------------------------------------------------------------------
+# MTCN options
+# -----------------------------------------------------------------------------
+_C.MTCN = CfgNode()
+
+# 
+_C.MTCN.SEQ_LEN = 5
+
+# 
+_C.MTCN.NUM_CLIPS = 10
+
+# 
+_C.MTCN.NUM_LAYERS = 4
+
 
 # -----------------------------------------------------------------------------
 # Slowfast options
@@ -317,6 +366,9 @@ _C.DATA.NUM_FRAMES = 8
 # The video sampling rate of the input clip.
 _C.DATA.SAMPLING_RATE = 8
 
+# number of input channels (rgb=3)
+_C.DATA.IMAGE_CHANNELS = 3
+
 # The mean value of the video raw pixels across the R G B channels.
 #############
 # ✓✓✓✓✓✓✓✓✓ #
@@ -328,6 +380,7 @@ _C.DATA.MEAN = [0.45, 0.45, 0.45]
 # ✓✓✓✓✓✓✓✓✓ #
 #############
 _C.DATA.INPUT_CHANNEL_NUM = [3, 3]
+_C.DATA.AUDIO_INPUT_CHANNEL_NUM = [1, 1]
 
 # The std value of the video raw pixels across the R G B channels.
 #############
@@ -346,6 +399,33 @@ _C.DATA.TRAIN_CROP_SIZE = 224
 # ✓✓✓✓✓✓✓✓✓ #
 #############
 _C.DATA.TEST_CROP_SIZE = 256
+
+
+# -----------------------------------------------------------------------------
+# Audio data options
+# -----------------------------------------------------------------------------
+_C.AUDIO_DATA = CfgNode()
+
+# Sampling rate of audio (in kHz)
+_C.AUDIO_DATA.SAMPLING_RATE = 24000
+
+# audio channels
+_C.AUDIO_DATA.CHANNELS = 1
+
+# Duration of audio clip from which to extract the spectrogram
+_C.AUDIO_DATA.CLIP_SECS = 1.279
+
+# stft window length (in milliseconds)
+_C.AUDIO_DATA.WINDOW_LENGTH = 10
+
+# stft hop length (in milliseconds)
+_C.AUDIO_DATA.HOP_LENGTH = 5
+
+# Number of timesteps of the input spectrogram
+_C.AUDIO_DATA.NUM_FRAMES = 256
+
+# Number of frequencies of the input spectrogram
+_C.AUDIO_DATA.NUM_FREQUENCIES = 128
 
 
 # ---------------------------------------------------------------------------- #
@@ -439,6 +519,9 @@ _C.RNG_SEED = 1
 
 # Log period in iters.
 _C.LOG_PERIOD = 10
+
+# If True, log the model info.
+_C.LOG_MODEL_INFO = True
 
 # Distributed backend.
 #############

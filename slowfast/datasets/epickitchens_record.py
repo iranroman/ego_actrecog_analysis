@@ -13,10 +13,10 @@ def timestamp_to_sec(timestamp):
 
 
 class EpicKitchensVideoRecord(VideoRecord):
-    def __init__(self, tup):
-        self._index = str(tup[0])
+    def __init__(self, tup, index):
+        self.narration_id = str(tup[0])
         self._series = tup[1]
-        self.audio_sr = 24000
+        self.index = index
 
     @property
     def participant(self):
@@ -31,8 +31,12 @@ class EpicKitchensVideoRecord(VideoRecord):
         return timestamp_to_sec(self._series['start_timestamp'])
 
     @property
-    def stop_time(self):
+    def end_time(self):
         return timestamp_to_sec(self._series['stop_timestamp'])
+
+    @property
+    def duration(self):
+        return self.end_time - self.start_time
 
     @property
     def start_frame(self):
@@ -70,4 +74,4 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def metadata(self):
-        return {'narration_id': self._index}
+        return {'narration_id': self.narration_id}

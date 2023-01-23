@@ -9,6 +9,7 @@ import torch
 import slowfast.utils.checkpoint as cu
 import slowfast.utils.multiprocessing as mpu
 from slowfast.config.defaults import get_cfg
+from slowfast.utils.config_diff import print_compare
 
 from test_net import test
 
@@ -58,12 +59,15 @@ def load_config(args):
     """
     # Setup cfg.
     cfg = get_cfg()
+    og_cfg = cfg.clone()
     # Load config from cfg.
     if args.cfg_file is not None:
         cfg.merge_from_file(args.cfg_file)
     # Load config from command line, overwrite config from opts.
     if args.opts is not None:
         cfg.merge_from_list(args.opts)
+
+    print_compare(og_cfg, args.cfg_file)
 
     # Create the checkpoint dir.
     cu.make_checkpoint_dir(cfg.OUTPUT_DIR)

@@ -27,7 +27,7 @@ def temporal_sampling(frames, start_idx, end_idx, num_samples):
     return frames
 
 
-def get_start_end_idx(video_size, clip_size, clip_idx, num_clips):
+def get_start_end_idx(video_size, clip_size, clip_idx, num_clips, offset=0):
     """
     Sample a clip of size clip_size from a video of size video_size and
     return the indices of the first and last frame of the clip. If clip_idx is
@@ -55,7 +55,7 @@ def get_start_end_idx(video_size, clip_size, clip_idx, num_clips):
         # Uniformly sample the clip with the given index.
         start_idx = delta * clip_idx / num_clips
     end_idx = start_idx + clip_size - 1
-    return start_idx, end_idx
+    return offset + start_idx, offset + end_idx
 
 
 def pyav_decode_stream(

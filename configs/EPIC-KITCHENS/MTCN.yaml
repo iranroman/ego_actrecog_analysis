@@ -1,11 +1,11 @@
 TRAIN:
-  ENABLE: True
+  # ENABLE: True
   DATASET: epickitchens
   BATCH_SIZE: 32
   EVAL_PERIOD: 2
-  CHECKPOINT_PERIOD: 1
+  # CHECKPOINT_PERIOD: 1
   CHECKPOINT_TYPE: caffe2
-  AUTO_RESUME: True
+  # AUTO_RESUME: True
   FINETUNE: True
 DATA:
   NUM_FRAMES: 32
@@ -19,19 +19,21 @@ DATA:
 
 SLOWFAST:
   ALPHA: 4
-  BETA_INV: 8
-  FUSION_CONV_CHANNEL_RATIO: 2
+  # BETA_INV: 8
+  # FUSION_CONV_CHANNEL_RATIO: 2
   FUSION_KERNEL_SZ: 7
 RESNET:
   ZERO_INIT_FINAL_BN: True
-  WIDTH_PER_GROUP: 64
-  NUM_GROUPS: 1
-  DEPTH: 50
-  TRANS_FUNC: bottleneck_transform
-  STRIDE_1X1: False
+  # WIDTH_PER_GROUP: 64
+  # NUM_GROUPS: 1
+  # DEPTH: 50
+  # TRANS_FUNC: bottleneck_transform
+  # STRIDE_1X1: False
   NUM_BLOCK_TEMP_KERNEL: [[3, 3], [4, 4], [6, 6], [3, 3]]
   SPATIAL_STRIDES: [[1, 1], [2, 2], [2, 2], [2, 2]]
   SPATIAL_DILATIONS: [[1, 1], [1, 1], [1, 1], [1, 1]]
+  FREQUENCY_STRIDES: [[1, 1], [2, 2], [2, 2], [2, 2]]
+  FREQUENCY_DILATIONS: [[1, 1], [1, 1], [1, 1], [1, 1]]
 MTCN:
     SEQ_LEN: 9  # 5
     NUM_CLIPS: 10
@@ -41,34 +43,33 @@ MTCN:
     # NHEAD: 8
     NUM_LAYERS: 4  # 6
     # DROPOUT_RATE: 0.1
-    AUDIO: true
 NONLOCAL:
   LOCATION: [[[], []], [[], []], [[], []], [[], []]]
   GROUP: [[1, 1], [1, 1], [1, 1], [1, 1]]
-  INSTANTIATION: dot_product
+  # INSTANTIATION: dot_product
 BN:
   USE_PRECISE_STATS: True
   FREEZE: True
-  NUM_BATCHES_PRECISE: 200
-  MOMENTUM: 0.1
-  WEIGHT_DECAY: 0.0
+  # NUM_BATCHES_PRECISE: 200
+  # MOMENTUM: 0.1
+  # WEIGHT_DECAY: 0.0
 SOLVER:
   BASE_LR: 0.01
   LR_POLICY: steps_with_relative_lrs
   STEPS: [0, 20, 25]
   LRS: [1, 0.1, 0.01]
   MAX_EPOCH: 30
-  MOMENTUM: 0.9
+  # MOMENTUM: 0.9
   WEIGHT_DECAY: 1e-4
   WARMUP_EPOCHS: 1
   WARMUP_START_LR: 0.001
-  OPTIMIZING_METHOD: sgd
+  # OPTIMIZING_METHOD: sgd
 MODEL:
   NUM_CLASSES: [97, 300]
   ARCH: slowfast
   MODEL_NAME: MTCN
-  LOSS_FUNC: cross_entropy
-  DROPOUT_RATE: 0.5
+  # LOSS_FUNC: cross_entropy
+  # DROPOUT_RATE: 0.5
 
   # +++
   VIDEO: true
@@ -77,14 +78,18 @@ TEST:
   ENABLE: False
   DATASET: epickitchens
   BATCH_SIZE: 2
-  NUM_SPATIAL_CROPS: 3
+  # NUM_SPATIAL_CROPS: 3
   NUM_ENSEMBLE_VIEWS: 1
-DATA_LOADER:
-  NUM_WORKERS: 8
-  PIN_MEMORY: True
-EPICKITCHENS:
-  TRAIN_PLUS_VAL: False
+  CHECKPOINT_FILE_PATHS:
+    audio_encoder:
+    video_encoder:
+    cross_attention:
+# DATA_LOADER:
+#   NUM_WORKERS: 8
+#   PIN_MEMORY: True
+# EPICKITCHENS:
+#   TRAIN_PLUS_VAL: False
 # NUM_GPUS: 8     # ✓✓✓✓✓✓
-NUM_SHARDS: 1   # ✓✓✓✓✓✓
+# NUM_SHARDS: 1   # ✓✓✓✓✓✓
 RNG_SEED: 0     # ✓✓✓✓✓✓
 OUTPUT_DIR: .   # ✓✓✓✓✓✓

@@ -12,26 +12,27 @@ from ..slow_fast import SlowFast  # noqa
 @MODEL_REGISTRY.register
 class MTCN(nn.Module):
     def __init__(self, cfg):
+        super().__init__()
         # create config copy so encoders return embeddings instead
-        cfg_enc = cfg.clone()
-        cfg_enc.MODEL.NUM_CLASSES = None
+        cfg2 = cfg.clone()
+        cfg2.MODEL.NUM_CLASSES = None
 
         # video encoder
-        self.video_encoder = SlowFast(cfg_enc)
+        self.video_encoder = SlowFast(cfg2)
 
         # audio encoder
         self.audio_encoder = None
-        if cfg.MTCN.AUDIO:
-            self.audio_encoder = AuditorySlowFast(cfg_enc)
+        if cfg.MODEL.AUDIO:
+            self.audio_encoder = AuditorySlowFast(cfg2)
 
         # audio-visual cross attention
-        self.cross = MTCN_AV(
+        self.cross_attention = MTCN_AV(
             num_class=cfg.MODEL.NUM_CLASSES,
             visual_input_dim=cfg.RESNET.WIDTH_PER_GROUP * 32,
             audio_input_dim=cfg.RESNET.WIDTH_PER_GROUP * 32,
             seq_len=cfg.MTCN.SEQ_LEN,
             num_layers=cfg.MTCN.NUM_LAYERS,
-            audio=cfg.MTCN.AUDIO)
+            audio=cfg.MODEL.AUDIO)
 
     def forward(self, inputs):
         # extract video+audio features
@@ -42,9 +43,9 @@ class MTCN(nn.Module):
             Z = torch.stack([Zv, Za], dim=1)
         # video only
         else:
-            Zv = self.video_encoder(video)
+            Zv = self.video_encoder(inputs)
             Z = Zv[:, None]
 
         # cross-attention
-        Y = self.cross(Z)
+        Y = self.cross_attention(Z)
         return Y

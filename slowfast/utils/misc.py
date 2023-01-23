@@ -44,7 +44,7 @@ def gpu_mem_usage():
     return mem_usage_bytes / (1024 * 1024)
 
 
-def get_flop_stats(model, cfg, is_train):
+def get_flop_stats(model, cfg, input_shape, is_train):
     """
     Compute the gflops for the current model given the config.
     Args:
@@ -66,16 +66,13 @@ def get_flop_stats(model, cfg, is_train):
     #        cfg.DATA.TRAIN_CROP_SIZE,
     #    )
     #else:
-    input_tensors = torch.rand(
-        rgb_dimension,
-        cfg.DATA.NUM_FRAMES,
-        cfg.DATA.TEST_CROP_SIZE,
-        cfg.DATA.TEST_CROP_SIZE,
-    )
-
+    input_tensors = torch.rand(input_shape)
     flop_inputs = pack_pathway_output(cfg, input_tensors)
-    for i in range(len(flop_inputs)):
-        flop_inputs[i] = flop_inputs[i].unsqueeze(0).cuda(non_blocking=True)
+    if isinstance(flop_inputs, list):
+        for i in range(len(flop_inputs)):
+            flop_inputs[i] = flop_inputs[i].unsqueeze(0).cuda(non_blocking=True)
+    else:
+        flop_inputs = flop_inputs.unsqueeze(0).cuda(non_blocking=True)
 
     # If detection is enabled, count flops for one proposal.
     #if cfg.DETECTION.ENABLE:
@@ -90,7 +87,7 @@ def get_flop_stats(model, cfg, is_train):
     return gflops
 
 
-def log_model_info(model, cfg, is_train=True):
+def log_model_info(model, cfg, input_shape=None, is_train=True):
     """
     Log info, includes number of parameters, gpu usage and gflops.
     Args:
@@ -103,9 +100,9 @@ def log_model_info(model, cfg, is_train=True):
     logger.info("Model:\n{}".format(model))
     logger.info("Params: {:,}".format(params_count(model)))
     logger.info("Mem: {:,} MB".format(gpu_mem_usage()))
-    logger.info(
-        "FLOPs: {:,} GFLOPs".format(get_flop_stats(model, cfg, is_train))
-    )
+    if input_shape:
+        logger.info("FLOPs: {:,} GFLOPs".format(get_flop_stats(
+            model, cfg, input_shape, is_train)))
     logger.info("nvidia-smi")
     os.system("nvidia-smi")
 

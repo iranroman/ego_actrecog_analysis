@@ -39,9 +39,12 @@ class Epickitchens(torch.utils.data.Dataset):
         #if self.mode in ["train", "val", "train+val"]:
         #    self._num_clips = 1
         #elif self.mode in ["test"]:
+        assert self.cfg.MODEL.VIDEO or self.cfg.MODEL.AUDIO
+        
         self._num_clips = (
-                cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
+            cfg.TEST.NUM_ENSEMBLE_VIEWS * max(1, cfg.TEST.NUM_SPATIAL_CROPS)
         )
+
 
         logger.info("Constructing EPIC-KITCHENS {}...".format(mode))
         self._construct_loader()
@@ -66,12 +69,11 @@ class Epickitchens(torch.utils.data.Dataset):
             )
 
         self._video_records = []
-        self._spatial_temporal_idx = []
         for file in path_annotations_pickle:
             for tup in pd.read_pickle(file).iterrows():
                 for idx in range(self._num_clips):
-                    self._video_records.append(EpicKitchensVideoRecord(tup))
-                    self._spatial_temporal_idx.append(idx)
+                    self._video_records.append(EpicKitchensVideoRecord(tup, idx))
+        self._video_records = self._video_records[:10000]
         assert (
                 len(self._video_records) > 0
         ), "Failed to load EPIC-KITCHENS split {} from {}".format(
@@ -100,18 +102,18 @@ class Epickitchens(torch.utils.data.Dataset):
         """
         record = self._video_records[index]
 
-        if cfg.MODEL.VIDEO:
-            video = self.get_video_clip(record, index)
+        if self.cfg.MODEL.VIDEO:
+            video = self.get_video_clip(record)
             data = video
-        if cfg.MODEL.AUDIO:
-            audio = self.get_audio_clip(record, index)
+        if self.cfg.MODEL.AUDIO:
+            audio = self.get_audio_clip(record)
             data = audio
-        if cfg.MODEL.VIDEO and cfg.MODEL.AUDIO:
+        if self.cfg.MODEL.VIDEO and self.cfg.MODEL.AUDIO:
             data = video, audio
 
         return data, record.label, index, record.metadata
 
-    def get_video_clip(self, record, index):
+    def get_video_clip(self, record):
         
         #if self.mode in ["train", "val", "train+val"]:
         #    # -1 indicates random sampling.
@@ -123,17 +125,13 @@ class Epickitchens(torch.utils.data.Dataset):
         #elif self.mode in ["test"]:
         if self.mode in ["test"]:
             temporal_sample_index = (
-                self._spatial_temporal_idx[index]
-                // self.cfg.TEST.NUM_SPATIAL_CROPS
-            )
+                record.index // self.cfg.TEST.NUM_SPATIAL_CROPS)
             # spatial_sample_index is in [0, 1, 2]. Corresponding to left,
             # center, or right if width is larger than height, and top, middle,
             # or bottom if height is larger than width.
             if self.cfg.TEST.NUM_SPATIAL_CROPS == 3:
                 spatial_sample_index = (
-                    self._spatial_temporal_idx[index]
-                    % self.cfg.TEST.NUM_SPATIAL_CROPS
-                )
+                    record.index % self.cfg.TEST.NUM_SPATIAL_CROPS)
             elif self.cfg.TEST.NUM_SPATIAL_CROPS == 1:
                 spatial_sample_index = 1
             min_scale, max_scale, crop_size = [self.cfg.DATA.TEST_CROP_SIZE] * 3
@@ -151,7 +149,7 @@ class Epickitchens(torch.utils.data.Dataset):
         if scale and scale != 1:
             frames = torch.stack([
                 # The new size order for cv2.resize is w, h.
-                cv2.resize(img, (0, 0). fx=scale, fy=scale)
+                torch.from_numpy(cv2.resize(img, (0, 0), fx=scale, fy=scale))
                 for img in frames.numpy()
             ])
         
@@ -175,25 +173,24 @@ class Epickitchens(torch.utils.data.Dataset):
         frames = utils.pack_pathway_output(self.cfg, frames)
         return frames
 
-    def get_audio_clip(self, record, index):
+    def get_audio_clip(self, record):
         if self.mode in ["train", "val", "train+val"]:
             # -1 indicates random sampling.
             temporal_sample_index = -1
         elif self.mode in ["test"]:
-            temporal_sample_index = self._temporal_idx[index]
+            temporal_sample_index = record.index
         else:
             raise NotImplementedError(
                 "Does not support {} mode".format(self.mode)
             )
 
-        spec = pack_audio(self.cfg, self.audio_dataset, record, temporal_sample_index)
+        spec = pack_audio(self.cfg, record, temporal_sample_index, self._num_clips)
         # Normalization.
         spec = spec.float()
         if self.mode in ["train", "train+val"]:
             # Data augmentation. C T F -> C F T -> C T F
             spec = combined_transforms(spec.permute(0, 2, 1)).permute(0, 2, 1)
-        
-        
+
         spec = utils.pack_pathway_output(self.cfg, spec)
         return spec
 

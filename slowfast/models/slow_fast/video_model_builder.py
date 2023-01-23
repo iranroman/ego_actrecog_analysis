@@ -312,31 +312,28 @@ class SlowFast(nn.Module):
             dilation=cfg.RESNET.SPATIAL_DILATIONS[3],
         )
 
-        if cfg.MODEL.NUM_CLASSES:
-            self.head = head_helper.ResNetBasicHead(
-                dim_in=[
-                    width_per_group * 32,
-                    width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
+        self.head = head_helper.ResNetBasicHead(
+            dim_in=[
+                width_per_group * 32,
+                width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
+            ],
+            num_classes=cfg.MODEL.NUM_CLASSES,
+            pool_size=[
+                [
+                    cfg.DATA.NUM_FRAMES
+                    // cfg.SLOWFAST.ALPHA
+                    // pool_size[0][0],
+                    cfg.DATA.CROP_SIZE // 32 // pool_size[0][1],
+                    cfg.DATA.CROP_SIZE // 32 // pool_size[0][2],
                 ],
-                num_classes=cfg.MODEL.NUM_CLASSES,
-                pool_size=[
-                    [
-                        cfg.DATA.NUM_FRAMES
-                        // cfg.SLOWFAST.ALPHA
-                        // pool_size[0][0],
-                        cfg.DATA.CROP_SIZE // 32 // pool_size[0][1],
-                        cfg.DATA.CROP_SIZE // 32 // pool_size[0][2],
-                    ],
-                    [
-                        cfg.DATA.NUM_FRAMES // pool_size[1][0],
-                        cfg.DATA.CROP_SIZE // 32 // pool_size[1][1],
-                        cfg.DATA.CROP_SIZE // 32 // pool_size[1][2],
-                    ],
+                [
+                    cfg.DATA.NUM_FRAMES // pool_size[1][0],
+                    cfg.DATA.CROP_SIZE // 32 // pool_size[1][1],
+                    cfg.DATA.CROP_SIZE // 32 // pool_size[1][2],
                 ],
-                dropout_rate=cfg.MODEL.DROPOUT_RATE,
-            )
-        else:
-            self.head = None
+            ],
+            dropout_rate=cfg.MODEL.DROPOUT_RATE,
+        )
 
     def forward(self, x, bboxes=None):
         x = self.s1(x)
@@ -351,11 +348,10 @@ class SlowFast(nn.Module):
         x = self.s4(x)
         x = self.s4_fuse(x)
         x = self.s5(x)
-        if self.head is not None:
-            if self.enable_detection:
-                x = self.head(x, bboxes)
-            else:
-                x = self.head(x)
+        if self.enable_detection:
+            x = self.head(x, bboxes)
+        else:
+            x = self.head(x)
         return x
 
     def freeze_fn(self, freeze_mode):

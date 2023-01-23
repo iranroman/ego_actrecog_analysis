@@ -162,7 +162,7 @@ class AuditorySlowFast(nn.Module):
         temp_kernel = _TEMPORAL_KERNEL_BASIS[cfg.MODEL.ARCH]
 
         self.s1 = stem_helper.AudioModelStem(
-            dim_in=cfg.DATA.INPUT_CHANNEL_NUM,
+            dim_in=cfg.DATA.AUDIO_INPUT_CHANNEL_NUM,
             dim_out=[width_per_group, width_per_group // cfg.SLOWFAST.BETA_INV],
             kernel=[temp_kernel[0][0] + [7], temp_kernel[0][1] + [7]],
             stride=[[2, 2]] * 2,
@@ -288,30 +288,27 @@ class AuditorySlowFast(nn.Module):
             norm_module=self.norm_module,
         )
 
-        if cfg.MODEL.NUM_CLASSES:
-            self.head = head_helper.ResNetBasicHead(
-                dim_in=[
-                    width_per_group * 32,
-                    width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
+        self.head = head_helper.ResNetBasicHead(
+            dim_in=[
+                width_per_group * 32,
+                width_per_group * 32 // cfg.SLOWFAST.BETA_INV,
+            ],
+            num_classes=cfg.MODEL.NUM_CLASSES,
+            pool_size=[
+                [
+                    cfg.AUDIO_DATA.NUM_FRAMES
+                    // cfg.SLOWFAST.ALPHA // 4
+                    // pool_size[0][0],
+                    cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[0][1],
                 ],
-                num_classes=cfg.MODEL.NUM_CLASSES if len(cfg.MODEL.NUM_CLASSES) > 1 else cfg.MODEL.NUM_CLASSES[0],
-                pool_size=[
-                    [
-                        cfg.AUDIO_DATA.NUM_FRAMES
-                        // cfg.SLOWFAST.ALPHA // 4
-                        // pool_size[0][0],
-                        cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[0][1],
-                    ],
-                    [
-                        cfg.AUDIO_DATA.NUM_FRAMES // 4 // pool_size[1][0],
-                        cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[1][1],
-                    ],
+                [
+                    cfg.AUDIO_DATA.NUM_FRAMES // 4 // pool_size[1][0],
+                    cfg.AUDIO_DATA.NUM_FREQUENCIES // 32 // pool_size[1][1],
                 ],
-                dropout_rate=cfg.MODEL.DROPOUT_RATE,
-                act_func=cfg.MODEL.HEAD_ACT,
-            )
-        else:
-            self.head = None
+            ],
+            dropout_rate=cfg.MODEL.DROPOUT_RATE,
+            act_func=cfg.MODEL.HEAD_ACT,
+        )
 
     def forward(self, x, bboxes=None):
         x = self.s1(x)
@@ -326,8 +323,7 @@ class AuditorySlowFast(nn.Module):
         x = self.s4(x)
         x = self.s4_fuse(x)
         x = self.s5(x)
-        if self.head is not None:
-            x = self.head(x)
+        x = self.head(x)
         return x
 
     def freeze_fn(self, freeze_mode):
@@ -405,7 +401,7 @@ class ResNet(nn.Module):
         temp_kernel = _TEMPORAL_KERNEL_BASIS[cfg.MODEL.ARCH]
 
         self.s1 = stem_helper.AudioModelStem(
-            dim_in=cfg.DATA.INPUT_CHANNEL_NUM,
+            dim_in=cfg.DATA.AUDIO_INPUT_CHANNEL_NUM,
             dim_out=[width_per_group],
             kernel=[temp_kernel[0][0] + [7]],
             stride=[[2, 2]],
@@ -487,7 +483,7 @@ class ResNet(nn.Module):
 
         self.head = head_helper.ResNetBasicHead(
             dim_in=[width_per_group * 32],
-            num_classes=cfg.MODEL.NUM_CLASSES if len(cfg.MODEL.NUM_CLASSES) > 1 else cfg.MODEL.NUM_CLASSES[0],
+            num_classes=cfg.MODEL.NUM_CLASSES,
             pool_size=[
                 [
                     cfg.AUDIO_DATA.NUM_FRAMES // 4 // pool_size[0][0],

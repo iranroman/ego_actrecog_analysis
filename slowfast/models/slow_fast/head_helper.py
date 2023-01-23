@@ -179,10 +179,12 @@ class ResNetBasicHead(nn.Module):
             self.dropout = nn.Dropout(dropout_rate)
         # Perform FC in a fully convolutional manner. The FC layer will be
         # initialized with a different std comparing to convolutional layers.
+        if isinstance(num_classes, (list, tuple)) and len(num_classes) == 1:
+            num_classes = num_classes[0]
         if isinstance(num_classes, (list, tuple)):
             self.projection_verb = nn.Linear(sum(dim_in), num_classes[0], bias=True)
             self.projection_noun = nn.Linear(sum(dim_in), num_classes[1], bias=True)
-        else:
+        elif num_classes:
             self.projection = nn.Linear(sum(dim_in), num_classes, bias=True)
         self.num_classes = num_classes
         # Softmax for evaluation and testing.
@@ -210,31 +212,22 @@ class ResNetBasicHead(nn.Module):
         # Perform dropout.
         if hasattr(self, "dropout"):
             x = self.dropout(x)
+
         if isinstance(self.num_classes, (list, tuple)):
-            x_v = self.projection_verb(x)
-            x_n = self.projection_noun(x)
-
-            # Performs fully convlutional inference.
-            if not self.training:
-                x_v = self.act(x_v)
-                x_v = x_v.mean([1, 2, 3])
-
-            x_v = x_v.view(x_v.shape[0], -1)
-
-            # Performs fully convlutional inference.
-            if not self.training:
-                x_n = self.act(x_n)
-                x_n = x_n.mean([1, 2, 3])
-
-            x_n = x_n.view(x_n.shape[0], -1)
-            return (x_v, x_n)
+            return (
+                self._post(self.projection_verb(x)),
+                self._post(self.projection_noun(x)),
+            )
+        elif self.num_classes:
+            return self._post(self.projection(x))
         else:
-            x = self.projection(x)
+            return x.mean([1, 2, 3]) # squeezes out ones -> [batch, features]
 
-            # Performs fully convlutional inference.
-            if not self.training:
-                x = self.act(x)
-                x = x.mean([1, 2, 3])
+    def _post(self, x):
+        # Performs fully convlutional inference.
+        if not self.training:
+            x = self.act(x)
+            x = x.mean([1, 2, 3])
 
-            x = x.view(x.shape[0], -1)
-            return x
+        x = x.view(x.shape[0], -1)
+        return x

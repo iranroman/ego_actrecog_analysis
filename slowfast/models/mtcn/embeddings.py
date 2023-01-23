@@ -47,6 +47,8 @@ class FeatureEmbedding(nn.Module):
         vis_embed = self.dropout_v(inputs[:, :self.seq_len * self.num_clips, :self.visual_input_dim])
         vis_embed = self.visual_projection(vis_embed)
         vis_embed = self.visual_relu(vis_embed)
+        print(vis_embed.shape, pos_embed.shape)
+        input()
         vis_embed = vis_embed + pos_embed
         
         if self.audio:
@@ -73,8 +75,8 @@ class FeatureEmbedding(nn.Module):
         seq = torch.cat(
             [vis_embed] + 
             ([aud_embed] if self.audio else []) + 
-            ([verb_embed, noun_embed] if self.embed_actions else [action_embed])
-        )
+            ([verb_embed, noun_embed] if not self.embed_actions else [action_embed]),
+            dim=1)
         seq = self.dropout(seq)
         seq = seq.transpose(0, 1).contiguous()
         return seq

@@ -24,34 +24,36 @@ def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0
     return start_frame + index
 
 
+def omnivore_sampling(record, num_frames):
+    seg_size = float(record.num_frames - 1) / num_frames
+    i = np.arange(num_frames)
+    return (
+        record.start_frame + 
+        np.round(seg_size * (i + 0.5)).astype(int)
+    )
+
+
 def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_fps=60):
     # Load video by loading its extracted frames
-    path_to_video = '{}/rgb_frames/{}'.format(cfg.EPICKITCHENS.VISUAL_DATA_DIR,
-                                                 #video_record.participant,
-                                                 video_record.untrimmed_video_name)
-    img_tmpl = "frame_{:010d}.jpg"
-    if cfg.MODEL.MODEL_NAME == 'SlowFast':
-        fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
+    if cfg.MODEL.MODEL_NAME == 'Omnivore':
+        frame_idx = omnivore_sampling(video_record, cfg.DATA.NUM_FRAMES)
+    else:
+        fps, sr, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
         start_idx, end_idx = get_start_end_idx(
             video_record.num_frames,
-            num_samples * sampling_rate * fps / target_fps,
+            num_samples * sr * fps / target_fps,
             temporal_sample_index,
-            cfg.TEST.NUM_ENSEMBLE_VIEWS,
-        )
-        start_idx, end_idx = start_idx + 1, end_idx + 1
-        frame_idx = temporal_sampling(video_record.num_frames,
-                                      start_idx, end_idx, num_samples,
-                                      start_frame=video_record.start_frame)
-    elif cfg.MODEL.MODEL_NAME == 'Omnivore':
+            cfg.TEST.NUM_ENSEMBLE_VIEWS)
+        frame_idx = temporal_sampling(
+            video_record.num_frames,
+            start_idx + 1, end_idx + 1, num_samples,
+            start_frame=video_record.start_frame)
 
-        seg_size = float(video_record.num_frames - 1) / cfg.DATA.NUM_FRAMES
-        seq = []
-        for i in range(cfg.DATA.NUM_FRAMES):
-            start = int(np.round(seg_size * i))
-            end = int(np.round(seg_size * (i + 1)))
-            seq.append((start + end) // 2)
-        frame_idx = torch.tensor(video_record.start_frame + np.array(seq))
-
-    img_paths = [os.path.join(path_to_video, img_tmpl.format(idx.item())) for idx in frame_idx]
-    frames = utils.retry_load_images(img_paths)
-    return frames
+    return utils.retry_load_images([
+        os.path.join(
+            cfg.EPICKITCHENS.VISUAL_DATA_DIR, 
+            'rgb_frames', 
+            video_record.untrimmed_video_name,
+            f"frame_{idx.item():010d}.jpg") 
+        for idx in frame_idx
+    ])

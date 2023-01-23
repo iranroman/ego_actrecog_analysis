@@ -279,6 +279,7 @@ class TestMeter(object):
         stats = {
             "split": "test_iter",
             "cur_iter": "{}".format(cur_iter + 1),
+            "progress": f"{cur_iter / self.overall_iters:.1%}",
             "eta": eta,
             "time_diff": self.iter_timer.seconds(),
         }
@@ -1031,6 +1032,7 @@ class EPICTestMeter(object):
             "split": "test_iter",
             "cur_iter": "{}".format(cur_iter + 1),
             "eta": eta,
+            "progress": f"{cur_iter / self.overall_iters:.2%}",
             "time_diff": self.iter_timer.seconds(),
         }
         logging.log_json_stats(stats)
