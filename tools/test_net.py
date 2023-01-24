@@ -74,6 +74,9 @@ def perform_test(test_loader, model, test_meter, cfg):
             )
             test_meter.log_iter_stats(cur_iter)
 
+            if cur_iter % 100 == 0:
+                test_meter.compute_metrics()
+
             test_meter.iter_tic()
     finally:
         # Log epoch stats and print the final testing results.

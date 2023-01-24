@@ -1057,7 +1057,9 @@ class EPICTestMeter(object):
                 )
             )
             logger.warning(self.clip_count)
+        return self.compute_metrics(ks)
 
+    def compute_metrics(self, ks=(1, 5)):
         verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks)
         noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks)
         actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks)
@@ -1080,7 +1082,7 @@ class EPICTestMeter(object):
             'pos': ['verb']*len(ks) + ['noun']*len(ks) + ['action']*len(ks),
             # 'run': 0,
         }).pivot(index='topk', columns='pos', values='acc').sort_index(axis=1)
-        logger.info(f'\n\n{stats_df}\n')
+        logger.info(f'\n{stats_df}')
 
         return (self.verb_video_preds.numpy().copy(), self.noun_video_preds.numpy().copy()), \
                (self.verb_video_labels.numpy().copy(), self.noun_video_labels.numpy().copy()), \
