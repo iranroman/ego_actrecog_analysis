@@ -103,7 +103,7 @@ class ResNetBasicHead(nn.Module):
         # Performs fully convlutional inference.
         if not self.training:
             x = self.act(x)
-            x = x.mean([1, 2, 3])
+            x = x.mean([1, 2])
 
         x = x.view(x.shape[0], -1)
         return x

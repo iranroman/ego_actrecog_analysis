@@ -5,6 +5,7 @@
 
 import datetime
 import numpy as np
+import pandas as pd
 import os
 from collections import defaultdict, deque
 import torch
@@ -1072,6 +1073,15 @@ class EPICTestMeter(object):
         for k, noun_topk in zip(ks, noun_topks):
             stats["noun_top{}_acc".format(k)] = "{:.{prec}f}".format(noun_topk, prec=2)
         logging.log_json_stats(stats)
+        
+        stats_df = pd.DataFrame({
+            'acc': np.stack([x.numpy() for x in [*verb_topks, *noun_topks, *actn_topks]]),
+            'topk': np.concatenate([ks, ks, ks]),
+            'pos': ['verb']*len(ks) + ['noun']*len(ks) + ['action']*len(ks),
+            # 'run': 0,
+        }).pivot(index='topk', columns='pos', values='acc').sort_index(axis=1)
+        logger.info(f'\n\n{stats_df}\n')
+
         return (self.verb_video_preds.numpy().copy(), self.noun_video_preds.numpy().copy()), \
                (self.verb_video_labels.numpy().copy(), self.noun_video_labels.numpy().copy()), \
                self.metadata.copy()

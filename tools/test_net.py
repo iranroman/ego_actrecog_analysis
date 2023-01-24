@@ -19,12 +19,7 @@ from slowfast.utils.meters import AVAMeter, TestMeter, EPICTestMeter
 logger = logging.get_logger(__name__)
 
 
-def to_cuda_recursive(inputs, **kw):
-    if isinstance(inputs, dict):
-        return {k: to_cuda_recursive(x, **kw) for k, x in inputs.items()}
-    if isinstance(inputs, (list, tuple)):
-        return [to_cuda_recursive(x, **kw) for x in inputs]
-    return inputs.cuda(**kw)
+
 
 def perform_test(test_loader, model, test_meter, cfg):
     """
@@ -49,51 +44,45 @@ def perform_test(test_loader, model, test_meter, cfg):
 
     test_meter.iter_tic()
 
-    for cur_iter, (inputs, labels, video_idx, meta) in enumerate(test_loader):
-        # Transfer the data to the current GPU device.
-        inputs = to_cuda_recursive(inputs, non_blocking=True)
-        labels = to_cuda_recursive(labels)
-        video_idx = video_idx.cuda()
+    try:
+        for cur_iter, (inputs, labels, video_idx, metadata) in enumerate(test_loader):
+            # Transfer the data to the current GPU device.
+            inputs = misc.to_cuda_recursive(inputs, non_blocking=True)
+            labels = misc.to_cuda_recursive(labels)
 
-        # Perform the forward pass.
-        preds = model(inputs)
+            # Perform the forward pass.
+            # print(misc.call_recursive(lambda x: f'{x.shape} {x.min():.4f} {x.max():.4f}', inputs))
+            preds = model(inputs)
+            # print(misc.call_recursive(lambda x: f'{x.shape} {x.min():.4f} {x.max():.4f}', preds))
+            verb_preds, noun_preds = preds
+            verb_labels, noun_labels = labels
 
-        # Gather all the predictions across all the devices to perform ensemble.
-        if cfg.NUM_GPUS > 1:
-            verb_preds, verb_labels, video_idx = du.all_gather(
-                [preds[0], labels['verb'], video_idx]
+            # Gather all the predictions across all the devices to perform ensemble.
+            if cfg.NUM_GPUS > 1:
+                _x = verb_preds, noun_preds, verb_labels, noun_labels
+                verb_preds, noun_preds, verb_labels, noun_labels = du.all_gather(_x)
+
+                meta = du.all_gather_unaligned(metadata)
+                metadata = {k: [x for m in meta for x in m[k]] for k in meta[0]} if meta else {}
+
+            test_meter.iter_toc()
+            # Update and log stats.
+            test_meter.update_stats(
+                (verb_preds.detach().cpu(), noun_preds.detach().cpu()),
+                (verb_labels.detach().cpu(), noun_labels.detach().cpu()),
+                metadata, video_idx
             )
+            test_meter.log_iter_stats(cur_iter)
 
-            noun_preds, noun_labels, video_idx = du.all_gather(
-                [preds[1], labels['noun'], video_idx]
-            )
-            meta = du.all_gather_unaligned(meta)
-            metadata = {'narration_id': []}
-            for i in range(len(meta)):
-                metadata['narration_id'].extend(meta[i]['narration_id'])
-        else:
-            metadata = meta
-            verb_preds, verb_labels, video_idx = preds[0], labels['verb'], video_idx
-            noun_preds, noun_labels, video_idx = preds[1], labels['noun'], video_idx
-        test_meter.iter_toc()
-        # Update and log stats.
-        test_meter.update_stats(
-            (verb_preds.detach().cpu(), noun_preds.detach().cpu()),
-            (verb_labels.detach().cpu(), noun_labels.detach().cpu()),
-            metadata,
-            video_idx.detach().cpu(),
-        )
-        test_meter.log_iter_stats(cur_iter)
-
-        test_meter.iter_tic()
-
-    # Log epoch stats and print the final testing results.
-    #if cfg.TEST.DATASET == 'epickitchens':
-    preds, labels, metadata = test_meter.finalize_metrics()
-    #else:
-    #    test_meter.finalize_metrics()
-    #    preds, labels, metadata = None, None, None
-    test_meter.reset()
+            test_meter.iter_tic()
+    finally:
+        # Log epoch stats and print the final testing results.
+        #if cfg.TEST.DATASET == 'epickitchens':
+        preds, labels, metadata = test_meter.finalize_metrics()
+        #else:
+        #    test_meter.finalize_metrics()
+        #    preds, labels, metadata = None, None, None
+        test_meter.reset()
     return preds, labels, metadata
 
 
@@ -106,9 +95,6 @@ def _load_nested_checkpoint(model, path, num_gpus):
         for k, p in path.items():
             _load_nested_checkpoint(getattr(model, k), p, num_gpus)
         return
-
-    print(path)
-    # input()
 
     # finally load the checkpoint
     cu.load_checkpoint(path, model, num_gpus > 1, None, inflation=False)
@@ -123,7 +109,7 @@ def _get_input_shape(cfg):
     )
     audio_shape = (
         cfg.AUDIO_DATA.CHANNELS,
-        cfg.DATA.NUM_FRAMES,
+        cfg.AUDIO_DATA.NUM_FRAMES,
         cfg.AUDIO_DATA.NUM_FREQUENCIES,
     )
     return (
@@ -152,9 +138,11 @@ def test(cfg):
 
     # Build the video model and print model statistics.
     model = build_model(cfg)
+    model.eval()
+
     if du.is_master_proc():
         if cfg.LOG_MODEL_INFO:
-            misc.log_model_info(model, cfg, is_train=False)
+            misc.log_model_info(model, cfg, _get_input_shape(cfg), is_train=False)
 
     # Load a checkpoint to test if applicable.
     _load_nested_checkpoint(model, cfg.TEST.CHECKPOINT_FILE_PATH, num_gpus=cfg.NUM_GPUS)
@@ -163,17 +151,12 @@ def test(cfg):
     test_loader = loader.construct_loader(cfg, "test")
     logger.info("Testing model for {} iterations".format(len(test_loader)))
 
-    assert (
-        len(test_loader.dataset)
-        % (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS)
-        == 0
-    )
+    num_clips = cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
+    assert len(test_loader.dataset) % num_clips == 0
     # Create meters for multi-view testing.
     #if cfg.TEST.DATASET == 'epickitchens':
     test_meter = EPICTestMeter(
-        len(test_loader.dataset)
-        // (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS),
-        cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS,
+        len(test_loader.dataset) // num_clips, num_clips,
         cfg.MODEL.NUM_CLASSES,
         len(test_loader),
     )

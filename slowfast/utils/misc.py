@@ -57,7 +57,7 @@ def get_flop_stats(model, cfg, input_shape, is_train):
     Returns:
         float: the total number of gflops of the given model.
     """
-    rgb_dimension = 3
+    # rgb_dimension = 3
     #if is_train:
     #    input_tensors = torch.rand(
     #        rgb_dimension,
@@ -66,13 +66,7 @@ def get_flop_stats(model, cfg, input_shape, is_train):
     #        cfg.DATA.TRAIN_CROP_SIZE,
     #    )
     #else:
-    input_tensors = torch.rand(input_shape)
-    flop_inputs = pack_pathway_output(cfg, input_tensors)
-    if isinstance(flop_inputs, list):
-        for i in range(len(flop_inputs)):
-            flop_inputs[i] = flop_inputs[i].unsqueeze(0).cuda(non_blocking=True)
-    else:
-        flop_inputs = flop_inputs.unsqueeze(0).cuda(non_blocking=True)
+    flop_inputs = fake_pathway_data(cfg, input_shape)
 
     # If detection is enabled, count flops for one proposal.
     #if cfg.DETECTION.ENABLE:
@@ -85,6 +79,30 @@ def get_flop_stats(model, cfg, input_shape, is_train):
     gflop_dict, _ = flop_count(model, inputs)
     gflops = sum(gflop_dict.values())
     return gflops
+
+
+
+def fake_pathway_data(cfg, shape):
+    if isinstance(shape, (list, tuple)):
+        if any(isinstance(x, (list, tuple)) for x in shape):
+            return [fake_pathway_data(cfg, x) for x in shape]
+    x = torch.rand(shape)
+    x = pack_pathway_output(cfg, x)
+    x = call_recursive(lambda x: x.unsqueeze(0).repeat(8,1,1,1).cuda(non_blocking=True), x)#.unsqueeze(0)
+    return x
+
+
+def to_cuda_recursive(x, **kw):
+    return call_recursive(lambda x: x.cuda(**kw), x)
+
+
+def call_recursive(func, xs, *a, **kw):
+    if isinstance(xs, dict):
+        return {k: call_recursive(func, x, *a, **kw) for k, x in xs.items()}
+    if isinstance(xs, (list, tuple)):
+        return [call_recursive(func, x, *a, **kw) for x in xs]
+    return func(xs, *a, **kw)
+
 
 
 def log_model_info(model, cfg, input_shape=None, is_train=True):
@@ -101,6 +119,9 @@ def log_model_info(model, cfg, input_shape=None, is_train=True):
     logger.info("Params: {:,}".format(params_count(model)))
     logger.info("Mem: {:,} MB".format(gpu_mem_usage()))
     if input_shape:
+        data = fake_pathway_data(cfg, input_shape)
+        logger.info("Input shape: {}".format(call_recursive(lambda x: x.shape, data)))
+        logger.info("Output shape: {}".format(call_recursive(lambda x: x.shape, model(data))))
         logger.info("FLOPs: {:,} GFLOPs".format(get_flop_stats(
             model, cfg, input_shape, is_train)))
     logger.info("nvidia-smi")

@@ -13,6 +13,7 @@ def timestamp_to_sec(timestamp):
 
 
 class EpicKitchensVideoRecord(VideoRecord):
+    audio_sr = 24000
     def __init__(self, tup, index):
         self.narration_id = str(tup[0])
         self._series = tup[1]
@@ -69,8 +70,7 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def label(self):
-        return {'verb': self._series.get('verb_class', -1),
-                'noun': self._series.get('noun_class', -1)}
+        return [self._series.get('verb_class', -1), self._series.get('noun_class', -1)]
 
     @property
     def metadata(self):

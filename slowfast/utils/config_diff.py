@@ -43,10 +43,10 @@ def print_compare(a, b):
     a = maybe_load_config(a)
     b = maybe_load_config(b)
 
-    print("-- Config Changes: -----")
-    print(yaml.dump(deep_match(a, b)))
     print("-- Redundant Config: -----")
     print(yaml.dump(deep_mismatch(a, b)))
+    print("-- Config Changes: -----")
+    print(yaml.dump(deep_match(a, b)))
 
 if __name__ == '__main__':
     import fire

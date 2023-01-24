@@ -73,7 +73,7 @@ class Epickitchens(torch.utils.data.Dataset):
             for tup in pd.read_pickle(file).iterrows():
                 for idx in range(self._num_clips):
                     self._video_records.append(EpicKitchensVideoRecord(tup, idx))
-        self._video_records = self._video_records[:10000]
+        # self._video_records = self._video_records[:10000]
         assert (
                 len(self._video_records) > 0
         ), "Failed to load EPIC-KITCHENS split {} from {}".format(
