@@ -58,6 +58,7 @@ def perform_test(test_loader, model, test_meter, cfg):
         video_idx = video_idx.cuda()
 
         # Perform the forward pass.
+        #print(inputs[0,:,0,0])
         preds = model(inputs)
 
         # Gather all the predictions across all the devices to perform ensemble.

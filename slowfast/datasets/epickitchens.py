@@ -38,7 +38,7 @@ class Epickitchens(torch.utils.data.Dataset):
         #if self.mode in ["train", "val", "train+val"]:
         #    self._num_clips = 1
         #elif self.mode in ["test"]:
-        if not cfg.TEST.SLIDE:
+        if not cfg.TEST.SLIDE.ENABLE:
             self._num_clips = (
                     cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
             )
@@ -61,7 +61,7 @@ class Epickitchens(torch.utils.data.Dataset):
         self._spatial_temporal_idx = []
         for file in path_annotations_pickle:
             for tup in pd.read_pickle(file).iterrows():
-                if not self.cfg.TEST.SLIDE:
+                if not self.cfg.TEST.SLIDE.ENABLE:
                     for idx in range(self._num_clips):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
                         self._spatial_temporal_idx.append(idx)
@@ -124,7 +124,7 @@ class Epickitchens(torch.utils.data.Dataset):
 
         frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
         
-        if self.cfg.MODEL.MODEL_NAME == 'SlowFast':
+        if self.cfg.DATA.FRAME_SAMPLING == 'like slowfast':
             # Perform color normalization.
             frames = frames.float()
             frames = frames / 255.0
@@ -145,7 +145,7 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = utils.pack_pathway_output(self.cfg, frames)
             metadata = self._video_records[index].metadata
             return frames, label, index, metadata
-        if self.cfg.MODEL.MODEL_NAME == 'Omnivore':
+        elif self.cfg.DATA.FRAME_SAMPLING == 'like omnivore':
             scale = min_scale/frames.shape[1]
             frames = [
                     cv2.resize(

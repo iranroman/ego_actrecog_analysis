@@ -32,41 +32,6 @@ _C.BN.NUM_BATCHES_PRECISE = 200
 # Weight decay value that applies on BN.
 _C.BN.WEIGHT_DECAY = 0.0
 
-
-# ---------------------------------------------------------------------------- #
-# Training options.
-# ---------------------------------------------------------------------------- #
-_C.TRAIN = CfgNode()
-
-# If True Train the model, else skip training.
-_C.TRAIN.ENABLE = True
-
-# Dataset.
-_C.TRAIN.DATASET = "kinetics"
-
-# Total mini-batch size.
-_C.TRAIN.BATCH_SIZE = 64
-
-# Evaluate model on test data every eval period epochs.
-_C.TRAIN.EVAL_PERIOD = 1
-
-# Save model checkpoint every checkpoint period epochs.
-_C.TRAIN.CHECKPOINT_PERIOD = 1
-
-# Resume training from the latest checkpoint in the output directory.
-_C.TRAIN.AUTO_RESUME = True
-
-# Path to the checkpoint to load the initial weight.
-_C.TRAIN.CHECKPOINT_FILE_PATH = ""
-
-_C.TRAIN.FINETUNE = False
-
-# Checkpoint types include `caffe2` or `pytorch`.
-_C.TRAIN.CHECKPOINT_TYPE = "pytorch"
-
-# If True, perform inflation when loading checkpoint.
-_C.TRAIN.CHECKPOINT_INFLATE = False
-
 # ---------------------------------------------------------------------------- #
 # Testing options
 # ---------------------------------------------------------------------------- #
@@ -116,9 +81,10 @@ _C.TEST.NUM_SPATIAL_CROPS = 3
 #############
 _C.TEST.CHECKPOINT_TYPE = "pytorch"
 
-_C.TEST.SLIDE = False
-_C.TEST.WIN_SIZE = 1.
-_C.TEST.HOP_SIZE = 1.
+_C.TEST.SLIDE = CfgNode()
+_C.TEST.SLIDE.ENABLE = False
+_C.TEST.SLIDE.WIN_SIZE = 1.
+_C.TEST.SLIDE.HOP_SIZE = 1.
 
 # -----------------------------------------------------------------------------
 # ResNet options
@@ -348,56 +314,7 @@ _C.DATA.TRAIN_CROP_SIZE = 224
 #############
 _C.DATA.TEST_CROP_SIZE = 256
 
-
-# ---------------------------------------------------------------------------- #
-# Optimizer options
-# ---------------------------------------------------------------------------- #
-_C.SOLVER = CfgNode()
-
-# Base learning rate.
-_C.SOLVER.BASE_LR = 0.1
-
-# Learning rate policy (see utils/lr_policy.py for options and examples).
-_C.SOLVER.LR_POLICY = "cosine"
-
-# Exponential decay factor.
-_C.SOLVER.GAMMA = 0.1
-
-# Step size for 'exp' and 'cos' policies (in epochs).
-_C.SOLVER.STEP_SIZE = 1
-
-# Steps for 'steps_' policies (in epochs).
-_C.SOLVER.STEPS = []
-
-# Learning rates for 'steps_' policies.
-_C.SOLVER.LRS = []
-
-# Maximal number of epochs.
-_C.SOLVER.MAX_EPOCH = 300
-
-# Momentum.
-_C.SOLVER.MOMENTUM = 0.9
-
-# Momentum dampening.
-_C.SOLVER.DAMPENING = 0.0
-
-# Nesterov momentum.
-_C.SOLVER.NESTEROV = True
-
-# L2 regularization.
-_C.SOLVER.WEIGHT_DECAY = 1e-4
-
-# Start the warm up from SOLVER.BASE_LR * SOLVER.WARMUP_FACTOR.
-_C.SOLVER.WARMUP_FACTOR = 0.1
-
-# Gradually warm up the SOLVER.BASE_LR over this number of epochs.
-_C.SOLVER.WARMUP_EPOCHS = 0
-
-# The start learning rate of the warm up.
-_C.SOLVER.WARMUP_START_LR = 0.01
-
-# Optimization method.
-_C.SOLVER.OPTIMIZING_METHOD = "sgd"
+_C.DATA.FRAME_SAMPLING = 'like slowfast'
 
 
 # ---------------------------------------------------------------------------- #
@@ -466,103 +383,6 @@ _C.DATA_LOADER.PIN_MEMORY = True
 _C.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE = False
 
 
-# ---------------------------------------------------------------------------- #
-# Detection options.
-# ---------------------------------------------------------------------------- #
-_C.DETECTION = CfgNode()
-
-# Whether enable video detection.
-#############
-# ✓✓✓✓✓✓✓✓✓ #
-#############
-_C.DETECTION.ENABLE = False
-
-# Aligned version of RoI. More details can be found at slowfast/models/head_helper.py
-_C.DETECTION.ALIGNED = True
-
-# Spatial scale factor.
-_C.DETECTION.SPATIAL_SCALE_FACTOR = 16
-
-# RoI tranformation resolution.
-_C.DETECTION.ROI_XFORM_RESOLUTION = 7
-
-
-# -----------------------------------------------------------------------------
-# AVA Dataset options
-# -----------------------------------------------------------------------------
-_C.AVA = CfgNode()
-
-# Directory path of frames.
-_C.AVA.FRAME_DIR = "/mnt/fair-flash3-east/ava_trainval_frames.img/"
-
-# Directory path for files of frame lists.
-_C.AVA.FRAME_LIST_DIR = (
-    "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
-)
-
-# Directory path for annotation files.
-_C.AVA.ANNOTATION_DIR = (
-    "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
-)
-
-# Filenames of training samples list files.
-_C.AVA.TRAIN_LISTS = ["train.csv"]
-
-# Filenames of test samples list files.
-_C.AVA.TEST_LISTS = ["val.csv"]
-
-# Filenames of box list files for training. Note that we assume files which
-# contains predicted boxes will have a suffix "predicted_boxes" in the
-# filename.
-_C.AVA.TRAIN_GT_BOX_LISTS = ["ava_train_v2.2.csv"]
-_C.AVA.TRAIN_PREDICT_BOX_LISTS = []
-
-# Filenames of box list files for test.
-_C.AVA.TEST_PREDICT_BOX_LISTS = ["ava_val_predicted_boxes.csv"]
-
-# This option controls the score threshold for the predicted boxes to use.
-_C.AVA.DETECTION_SCORE_THRESH = 0.9
-
-# If use BGR as the format of input frames.
-_C.AVA.BGR = False
-
-# Training augmentation parameters
-# Whether to use color augmentation method.
-_C.AVA.TRAIN_USE_COLOR_AUGMENTATION = False
-
-# Whether to only use PCA jitter augmentation when using color augmentation
-# method (otherwise combine with color jitter method).
-_C.AVA.TRAIN_PCA_JITTER_ONLY = True
-
-# Eigenvalues for PCA jittering. Note PCA is RGB based.
-_C.AVA.TRAIN_PCA_EIGVAL = [0.225, 0.224, 0.229]
-
-# Eigenvectors for PCA jittering.
-_C.AVA.TRAIN_PCA_EIGVEC = [
-    [-0.5675, 0.7192, 0.4009],
-    [-0.5808, -0.0045, -0.8140],
-    [-0.5836, -0.6948, 0.4203],
-]
-
-# Whether to do horizontal flipping during test.
-_C.AVA.TEST_FORCE_FLIP = False
-
-# Whether to use full test set for validation split.
-_C.AVA.FULL_TEST_ON_VAL = False
-
-# The name of the file to the ava label map.
-_C.AVA.LABEL_MAP_FILE = "ava_action_list_v2.2_for_activitynet_2019.pbtxt"
-
-# The name of the file to the ava exclusion.
-_C.AVA.EXCLUSION_FILE = "ava_val_excluded_timestamps_v2.2.csv"
-
-# The name of the file to the ava groundtruth.
-_C.AVA.GROUNDTRUTH_FILE = "ava_val_v2.2.csv"
-
-# Backend to process image, includes `pytorch` and `cv2`.
-_C.AVA.IMG_PROC_BACKEND = "cv2"
-
-
 # -----------------------------------------------------------------------------
 # EPIC-KITCHENS Dataset options
 # -----------------------------------------------------------------------------
@@ -593,9 +413,6 @@ def _assert_and_infer_cfg(cfg):
     # BN assertions.
     if cfg.BN.USE_PRECISE_STATS:
         assert cfg.BN.NUM_BATCHES_PRECISE >= 0
-    # TRAIN assertions.
-    assert cfg.TRAIN.CHECKPOINT_TYPE in ["pytorch", "caffe2"]
-    assert cfg.TRAIN.BATCH_SIZE % cfg.NUM_GPUS == 0
 
     # TEST assertions.
     assert cfg.TEST.CHECKPOINT_TYPE in ["pytorch", "caffe2"]

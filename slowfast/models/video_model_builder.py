@@ -145,7 +145,7 @@ class SlowFast(nn.Module):
                 comments of the config file.
         """
         super(SlowFast, self).__init__()
-        self.enable_detection = cfg.DETECTION.ENABLE
+        self.enable_detection = False
         self.num_pathways = 2
         self._construct_network(cfg)
         init_helper.init_weights(

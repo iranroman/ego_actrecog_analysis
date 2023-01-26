@@ -30,12 +30,12 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
                                                  #video_record.participant,
                                                  video_record.untrimmed_video_name)
     img_tmpl = "frame_{:010d}.jpg"
-    if cfg.TEST.SLIDE:
+    if cfg.TEST.SLIDE.ENABLE:
         # temporal_sample_index to frame index
-        end_idx = int(temporal_sample_index * cfg.TEST.HOP_SIZE * video_record.fps)
-        start_idx = int(end_idx - int(cfg.TEST.WIN_SIZE * video_record.fps) + 1)
+        end_idx = int(temporal_sample_index * cfg.TEST.SLIDE.HOP_SIZE * video_record.fps)
+        start_idx = int(end_idx - int(cfg.TEST.SLIDE.WIN_SIZE * video_record.fps) + 1)
         frame_idx = temporal_sampling(video_record.num_frames, start_idx, end_idx, cfg.DATA.NUM_FRAMES, video_record.start_frame+1)
-    elif cfg.MODEL.MODEL_NAME == 'SlowFast':
+    elif cfg.DATA.FRAME_SAMPLING == 'like slowfast':
         fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
         start_idx, end_idx = get_start_end_idx(
             video_record.num_frames,
@@ -47,7 +47,7 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
         frame_idx = temporal_sampling(video_record.num_frames,
                                       start_idx, end_idx, num_samples,
                                       start_frame=video_record.start_frame)
-    elif cfg.MODEL.MODEL_NAME == 'Omnivore':
+    elif cfg.DATA.FRAME_SAMPLING == 'like omnivore':
 
         seg_size = float(video_record.num_frames - 1) / cfg.DATA.NUM_FRAMES
         seq = []
