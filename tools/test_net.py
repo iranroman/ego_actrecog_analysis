@@ -139,7 +139,7 @@ def test(cfg):
     test_loader = loader.construct_loader(cfg, "test")
     logger.info("Testing model for {} iterations".format(len(test_loader)))
 
-    if not cfg.TEST.SLIDE:
+    if not cfg.TEST.SLIDE.ENABLE:
         assert (
             len(test_loader.dataset)
             % (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS)
@@ -149,7 +149,7 @@ def test(cfg):
 
     # Create meters for multi-view testing.
     #if cfg.TEST.DATASET == 'epickitchens':
-    if not cfg.TEST.SLIDE:
+    if not cfg.TEST.SLIDE.ENABLE:
         test_meter = EPICTestMeter(
             len(test_loader.dataset)
             // (cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS),
