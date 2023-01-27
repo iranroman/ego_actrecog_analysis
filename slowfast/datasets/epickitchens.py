@@ -69,6 +69,8 @@ class Epickitchens(torch.utils.data.Dataset):
                 else:
                     action_start_sec = timestamp_to_sec(tup[1]['start_timestamp'])
                     action_stop_sec = timestamp_to_sec(tup[1]['stop_timestamp'])
+                    video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
+                    video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
                     if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
                         win_start_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
                         win_stop_sec = win_start_sec + self.cfg.TEST.SLIDE.WIN_SIZE
@@ -81,6 +83,7 @@ class Epickitchens(torch.utils.data.Dataset):
                         ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
                         self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
+                        self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
                         win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                         win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
                         win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0

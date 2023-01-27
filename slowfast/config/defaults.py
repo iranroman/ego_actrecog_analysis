@@ -392,6 +392,8 @@ _C.EPICKITCHENS = CfgNode()
 
 _C.EPICKITCHENS.VISUAL_DATA_DIR = ""
 
+_C.EPICKITCHENS.VIDEO_DURS = "EPIC_100_video_info.csv"
+
 #############
 # ✓✓✓✓✓✓✓✓✓ #
 #############

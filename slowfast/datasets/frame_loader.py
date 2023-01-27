@@ -5,7 +5,7 @@ from . import utils as utils
 from .decoder import get_start_end_idx
 
 
-def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0):
+def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0, video_last_frame=float('inf')):
     """
     Given the start and end frame index, sample num_samples frames between
     the start and end with equal interval.
@@ -20,8 +20,10 @@ def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0
             `num clip frames` x `channel` x `height` x `width`.
     """
     index = torch.linspace(start_idx, end_idx, num_samples)
-    index = torch.clamp(index, 0, num_frames - 1).long()
-    return start_frame + index
+    index += start_frame
+    end_frame = start_frame + num_frames - 1
+    index = torch.clamp(index, start_frame, end_frame if end_frame < video_last_frame else video_last_frame).long()
+    return index
 
 
 def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_fps=60):
@@ -31,11 +33,12 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
                                                  video_record.untrimmed_video_name)
     img_tmpl = "frame_{:010d}.jpg"
     if cfg.TEST.SLIDE.ENABLE:
-        start_idx = 1
-        end_idx = cfg.TEST.SLIDE.WIN_SIZE * video_record.fps
+        start_idx = 0
+        end_idx = cfg.TEST.SLIDE.WIN_SIZE * video_record.fps - 1
         frame_idx = temporal_sampling(video_record.num_frames+1,
                                       start_idx, end_idx, cfg.DATA.NUM_FRAMES,
-                                      start_frame=video_record.start_frame)
+                                      start_frame=video_record.start_frame + 1, 
+                                      video_last_frame=video_record.time_end*video_record.fps)
     elif cfg.DATA.FRAME_SAMPLING == 'like slowfast':
         fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
         start_idx, end_idx = get_start_end_idx(
