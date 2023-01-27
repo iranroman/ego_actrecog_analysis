@@ -8,7 +8,7 @@ def timestamp_to_sec(timestamp):
     sec = float(timedelta(hours=x.tm_hour,
                           minutes=x.tm_min,
                           seconds=x.tm_sec).total_seconds()) + float(
-        timestamp.split('.')[-1]) / 100
+                                  timestamp.split('.')[-1][:2]) / 100
     return sec
 
 

@@ -4,11 +4,12 @@ import torch
 import torch.utils.data
 import cv2
 import numpy as np
+import datetime
 
 import slowfast.utils.logging as logging
 
 from .build import DATASET_REGISTRY
-from .epickitchens_record import EpicKitchensVideoRecord
+from .epickitchens_record import EpicKitchensVideoRecord, timestamp_to_sec
 
 from . import transform as transform
 from . import utils as utils
@@ -66,14 +67,25 @@ class Epickitchens(torch.utils.data.Dataset):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
                         self._spatial_temporal_idx.append(idx)
                 else:
-                    ek_record = EpicKitchensVideoRecord(tup)
-                    time_point = 0.0
-                    idx = 0
-                    while time_point <= (ek_record.dur_time+self.cfg.TEST.WIN_SIZE):
-                        self._video_records.append(EpicKitchensVideoRecord(tup))
-                        self._spatial_temporal_idx.append(idx)
-                        idx += 1
-                        time_point = idx*self.cfg.TEST.HOP_SIZE
+                    action_start_sec = timestamp_to_sec(tup[1]['start_timestamp'])
+                    action_stop_sec = timestamp_to_sec(tup[1]['stop_timestamp'])
+                    if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
+                        win_start_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
+                        win_stop_sec = win_start_sec + self.cfg.TEST.SLIDE.WIN_SIZE
+                    elif self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'outside':
+                        win_stop_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
+                        win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
+                        win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
+                    while (win_stop_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else (win_start_sec < action_stop_sec):
+                        ek_ann = tup[1].copy()
+                        ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
+                        ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
+                        self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
+                        win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                        win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
+                        win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
+                        self._spatial_temporal_idx.append(0)
+
 
         assert (
                 len(self._video_records) > 0
