@@ -14,7 +14,7 @@ import slowfast.utils.logging as logging
 import slowfast.utils.misc as misc
 from slowfast.datasets import loader
 from slowfast.models import build_model
-from slowfast.utils.meters import AVAMeter, TestMeter, EPICTestMeter
+from slowfast.utils.meters import EPICTestMeter
 
 logger = logging.get_logger(__name__)
 
