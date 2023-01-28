@@ -92,7 +92,7 @@ def perform_test(test_loader, model, test_meter, cfg):
 
     # Log epoch stats and print the final testing results.
     #if cfg.TEST.DATASET == 'epickitchens':
-    preds, labels, metadata = test_meter.finalize_metrics()
+    preds, labels, metadata = test_meter.finalize_metrics(inside_action_bounds=cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS)
     #else:
     #    test_meter.finalize_metrics()
     #    preds, labels, metadata = None, None, None
@@ -163,7 +163,9 @@ def test(cfg):
             1, # each window plays an equal weight on the metrics
             cfg.MODEL.NUM_CLASSES,
             len(test_loader),
+            cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS
         )
+
 
     # Perform multi-view test on the entire dataset.
     preds, labels, metadata = perform_test(test_loader, model, test_meter, cfg)

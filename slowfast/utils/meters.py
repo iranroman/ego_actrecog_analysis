@@ -26,7 +26,7 @@ class EPICTestMeter(object):
     The accuracy is calculated with the given ground truth labels.
     """
 
-    def __init__(self, num_videos, num_clips, num_cls, overall_iters):
+    def __init__(self, num_videos, num_clips, num_cls, overall_iters, inside_action_bounds=''):
         """
         Construct tensors to store the predictions and labels. Expect to get
         num_clips predictions from each video, and calculate the metrics on
@@ -42,11 +42,17 @@ class EPICTestMeter(object):
         self.iter_timer = Timer()
         self.num_clips = num_clips
         self.overall_iters = overall_iters
+        self.inside_action_bounds = inside_action_bounds
         # Initialize tensors.
         self.verb_video_preds = torch.zeros((num_videos, num_cls[0]))
         self.noun_video_preds = torch.zeros((num_videos, num_cls[1]))
-        self.verb_video_labels = torch.zeros((num_videos)).long()
-        self.noun_video_labels = torch.zeros((num_videos)).long()
+        if self.inside_action_bounds == 'ignore':
+            # up to three sim actions per frame in validation set
+            self.verb_video_labels = torch.zeros((num_videos, 3)).long()
+            self.noun_video_labels = torch.zeros((num_videos, 3)).long()
+        else:
+            self.verb_video_labels = torch.zeros((num_videos)).long()
+            self.noun_video_labels = torch.zeros((num_videos)).long()
         self.metadata = np.zeros(num_videos, dtype=object)
         self.clip_count = torch.zeros((num_videos)).long()
         # Reset metric.
@@ -107,7 +113,7 @@ class EPICTestMeter(object):
     def iter_toc(self):
         self.iter_timer.pause()
 
-    def finalize_metrics(self, ks=(1, 5)):
+    def finalize_metrics(self, ks=(1, 5), inside_action_bounds=''):
         """
         Calculate and log the final ensembled metrics.
         ks (tuple): list of top-k values for topk_accuracies. For example,
@@ -121,9 +127,9 @@ class EPICTestMeter(object):
             )
             logger.warning(self.clip_count)
 
-        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks)
-        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks)
-        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks)
+        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, inside_action_bounds)
+        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, inside_action_bounds)
+        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks, inside_action_bounds)
 
         assert len({len(ks), len(verb_topks)}) == 1
         assert len({len(ks), len(noun_topks)}) == 1
