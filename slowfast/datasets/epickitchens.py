@@ -13,7 +13,8 @@ from .epickitchens_record import EpicKitchensVideoRecord
 from . import transform as transform
 from . import utils as utils
 from .frame_loader import pack_frames_to_video_clip
-from .audio_loader_epic import pack_audio
+# from .audio_loader_epic import pack_audio
+from .audio_loader_epic_og import pack_audio
 
 logger = logging.get_logger(__name__)
 
@@ -53,15 +54,15 @@ class Epickitchens(torch.utils.data.Dataset):
         """
         Construct the video loader.
         """
-        #if self.mode == "train":
-        #    path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TRAIN_LIST)]
-        #elif self.mode == "val":
-        #    path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VAL_LIST)]
-        #elif self.mode == "test":
-        path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
-        #else:
-        #    path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, file)
-        #                               for file in [self.cfg.EPICKITCHENS.TRAIN_LIST, self.cfg.EPICKITCHENS.VAL_LIST]]
+        if self.mode == "train":
+           path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TRAIN_LIST)]
+        elif self.mode == "val":
+           path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VAL_LIST)]
+        elif self.mode == "test":
+            path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.TEST_LIST)]
+        else:
+           path_annotations_pickle = [os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, file)
+                                      for file in [self.cfg.EPICKITCHENS.TRAIN_LIST, self.cfg.EPICKITCHENS.VAL_LIST]]
 
         for file in path_annotations_pickle:
             assert os.path.exists(file), "{} dir not found".format(
@@ -84,6 +85,7 @@ class Epickitchens(torch.utils.data.Dataset):
                 len(self._video_records), path_annotations_pickle
             )
         )
+        self.audio_dataset = None
 
     def __getitem__(self, index):
         """
@@ -174,6 +176,10 @@ class Epickitchens(torch.utils.data.Dataset):
         return frames
 
     def get_audio_clip(self, record):
+        if self.audio_dataset is None and self.cfg.EPICKITCHENS.AUDIO_DATA_FILE:
+            import h5py
+            self.audio_dataset = h5py.File(self.cfg.EPICKITCHENS.AUDIO_DATA_FILE, 'r')
+
         if self.mode in ["train", "val", "train+val"]:
             # -1 indicates random sampling.
             temporal_sample_index = -1
@@ -184,7 +190,8 @@ class Epickitchens(torch.utils.data.Dataset):
                 "Does not support {} mode".format(self.mode)
             )
 
-        spec = pack_audio(self.cfg, record, temporal_sample_index, self._num_clips)
+        # spec = pack_audio(self.cfg, record, temporal_sample_index, self._num_clips, h5_reader=self.audio_dataset)
+        spec = pack_audio(self.cfg, self.audio_dataset, record, temporal_sample_index)
         # Normalization.
         spec = spec.float()
         if self.mode in ["train", "train+val"]:

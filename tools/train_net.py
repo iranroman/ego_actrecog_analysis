@@ -46,27 +46,15 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
 
     for cur_iter, (inputs, labels, _, meta) in enumerate(train_loader):
         # Transfer the data to the current GPU device.
-        if isinstance(inputs, (list,)):
-            for i in range(len(inputs)):
-                inputs[i] = inputs[i].cuda(non_blocking=True)
-        else:
-            inputs = inputs.cuda(non_blocking=True)
-        if isinstance(labels, (dict,)):
-            labels = {k: v.cuda() for k, v in labels.items()}
-        else:
-            labels = labels.cuda()
+        inputs = misc.to_cuda_recursive(inputs, non_blocking=True)
+        labels = misc.to_cuda_recursive(labels)
 
         # Update the learning rate.
         lr = optim.get_epoch_lr(cur_epoch + float(cur_iter) / data_size, cfg)
         optim.set_lr(optimizer, lr)
 
         if cfg.DETECTION.ENABLE:
-            for key, val in meta.items():
-                if isinstance(val, (list,)):
-                    for i in range(len(val)):
-                        val[i] = val[i].cuda(non_blocking=True)
-                else:
-                    meta[key] = val.cuda(non_blocking=True)
+            meta = misc.to_cuda_recursive(meta, non_blocking=True)
             # Compute the predictions.
             preds = model(inputs, meta["boxes"])
 
@@ -74,26 +62,19 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
             # Perform the forward pass.
             preds = model(inputs)
 
+        # Explicitly declare reduction to mean.
+        loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
         if isinstance(labels, (dict,)):
-            # Explicitly declare reduction to mean.
-            loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
-
             # Compute the loss.
             loss_verb = loss_fun(preds[0], labels['verb'])
             loss_noun = loss_fun(preds[1], labels['noun'])
             loss = 0.5 * (loss_verb + loss_noun)
-
-            # check Nan Loss.
-            misc.check_nan_losses(loss)
         else:
-            # Explicitly declare reduction to mean.
-            loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
-
             # Compute the loss.
             loss = loss_fun(preds, labels)
 
-            # check Nan Loss.
-            misc.check_nan_losses(loss)
+        # check Nan Loss.
+        misc.check_nan_losses(loss)
 
         # Perform the backward pass.
         optimizer.zero_grad()
@@ -218,23 +199,11 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
 
     for cur_iter, (inputs, labels, _, meta) in enumerate(val_loader):
         # Transferthe data to the current GPU device.
-        if isinstance(inputs, (list,)):
-            for i in range(len(inputs)):
-                inputs[i] = inputs[i].cuda(non_blocking=True)
-        else:
-            inputs = inputs.cuda(non_blocking=True)
-        if isinstance(labels, (dict,)):
-            labels = {k: v.cuda() for k, v in labels.items()}
-        else:
-            labels = labels.cuda()
+        inputs = misc.to_cuda_recursive(inputs, non_blocking=True)
+        labels = misc.to_cuda_recursive(labels)
 
         if cfg.DETECTION.ENABLE:
-            for key, val in meta.items():
-                if isinstance(val, (list,)):
-                    for i in range(len(val)):
-                        val[i] = val[i].cuda(non_blocking=True)
-                else:
-                    meta[key] = val.cuda(non_blocking=True)
+            meta = misc.to_cuda_recursive(meta, non_blocking=True)
             # Compute the predictions.
             preds = model(inputs, meta["boxes"])
 
@@ -253,35 +222,21 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
         else:
             preds = model(inputs)
             if isinstance(labels, (dict,)):
-                # Compute the verb accuracies.
+                # Compute the topk accuracies.
                 verb_top1_acc, verb_top5_acc = metrics.topk_accuracies(preds[0], labels['verb'], (1, 5))
+                noun_top1_acc, noun_top5_acc = metrics.topk_accuracies(preds[1], labels['noun'], (1, 5))
+                action_top1_acc, action_top5_acc = metrics.multitask_topk_accuracies(
+                    (preds[0], preds[1]), (labels['verb'], labels['noun']), (1, 5))
 
                 # Combine the errors across the GPUs.
                 if cfg.NUM_GPUS > 1:
                     verb_top1_acc, verb_top5_acc = du.all_reduce([verb_top1_acc, verb_top5_acc])
-
-                # Copy the errors from GPU to CPU (sync point).
-                verb_top1_acc, verb_top5_acc = verb_top1_acc.item(), verb_top5_acc.item()
-
-                # Compute the noun accuracies.
-                noun_top1_acc, noun_top5_acc = metrics.topk_accuracies(preds[1], labels['noun'], (1, 5))
-
-                # Combine the errors across the GPUs.
-                if cfg.NUM_GPUS > 1:
                     noun_top1_acc, noun_top5_acc = du.all_reduce([noun_top1_acc, noun_top5_acc])
-
-                # Copy the errors from GPU to CPU (sync point).
-                noun_top1_acc, noun_top5_acc = noun_top1_acc.item(), noun_top5_acc.item()
-
-                # Compute the action accuracies.
-                action_top1_acc, action_top5_acc = metrics.multitask_topk_accuracies((preds[0], preds[1]),
-                                                                                     (labels['verb'], labels['noun']),
-                                                                                     (1, 5))
-                # Combine the errors across the GPUs.
-                if cfg.NUM_GPUS > 1:
                     action_top1_acc, action_top5_acc = du.all_reduce([action_top1_acc, action_top5_acc])
 
                 # Copy the errors from GPU to CPU (sync point).
+                verb_top1_acc, verb_top5_acc = verb_top1_acc.item(), verb_top5_acc.item()
+                noun_top1_acc, noun_top5_acc = noun_top1_acc.item(), noun_top5_acc.item()
                 action_top1_acc, action_top5_acc = action_top1_acc.item(), action_top5_acc.item()
 
                 val_meter.iter_toc()
@@ -329,12 +284,7 @@ def calculate_and_update_precise_bn(loader, model, num_iters=200):
 
     def _gen_loader():
         for inputs, _, _, _ in loader:
-            if isinstance(inputs, (list,)):
-                for i in range(len(inputs)):
-                    inputs[i] = inputs[i].cuda(non_blocking=True)
-            else:
-                inputs = inputs.cuda(non_blocking=True)
-            yield inputs
+            yield misc.to_cuda_recursive(inputs, non_blocking=True)
 
     # Update the bn stats.
     update_bn_stats(model, _gen_loader(), num_iters)

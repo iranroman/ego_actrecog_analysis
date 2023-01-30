@@ -409,9 +409,6 @@ _C.AUDIO_DATA = CfgNode()
 # Sampling rate of audio (in kHz)
 _C.AUDIO_DATA.SAMPLING_RATE = 24000
 
-# audio channels
-_C.AUDIO_DATA.CHANNELS = 1
-
 # Duration of audio clip from which to extract the spectrogram
 _C.AUDIO_DATA.CLIP_SECS = 1.279
 
@@ -654,6 +651,8 @@ _C.AVA.IMG_PROC_BACKEND = "cv2"
 _C.EPICKITCHENS = CfgNode()
 
 _C.EPICKITCHENS.VISUAL_DATA_DIR = ""
+
+_C.EPICKITCHENS.AUDIO_DATA_FILE = ""
 
 #############
 # ✓✓✓✓✓✓✓✓✓ #
