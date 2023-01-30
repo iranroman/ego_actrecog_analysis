@@ -66,7 +66,7 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def end_frame(self):
-        return int(round(self.stop_time * self.fps))
+        return int(round(self.end_time * self.fps))
     
     @property
     def num_frames(self):

@@ -88,7 +88,7 @@ def fake_pathway_data(cfg, shape):
             return [fake_pathway_data(cfg, x) for x in shape]
     x = torch.rand(shape)
     x = pack_pathway_output(cfg, x)
-    x = call_recursive(lambda x: x.unsqueeze(0).repeat(8,1,1,1).cuda(non_blocking=True), x)#.unsqueeze(0)
+    x = call_recursive(lambda x: x[None].cuda(non_blocking=True), x)#.repeat(8,1,1,1)
     return x
 
 

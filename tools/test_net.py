@@ -75,7 +75,7 @@ def perform_test(test_loader, model, test_meter, cfg):
             test_meter.log_iter_stats(cur_iter)
 
             if cur_iter % 100 == 0:
-                test_meter.compute_metrics()
+                test_meter.compute_metrics(inside_action_bounds=cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS)
 
             test_meter.iter_tic()
     finally:
@@ -111,7 +111,7 @@ def _get_input_shape(cfg):
         cfg.DATA.TRAIN_CROP_SIZE,
     )
     audio_shape = (
-        cfg.AUDIO_DATA.CHANNELS,
+        1,# cfg.AUDIO_DATA.CHANNELS,
         cfg.AUDIO_DATA.NUM_FRAMES,
         cfg.AUDIO_DATA.NUM_FREQUENCIES,
     )

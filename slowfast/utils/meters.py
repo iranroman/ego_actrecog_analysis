@@ -128,8 +128,9 @@ class EPICTestMeter(object):
                 )
             )
             logger.warning(self.clip_count)
-        return self.compute_metrics(ks)
+        return self.compute_metrics(ks, inside_action_bounds)
 
+    def compute_metrics(self, ks=(1, 5), inside_action_bounds=''):
         verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, inside_action_bounds)
         noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, inside_action_bounds)
         actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks, inside_action_bounds)
