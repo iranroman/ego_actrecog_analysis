@@ -175,7 +175,7 @@ class Epickitchens(torch.utils.data.Dataset):
 
         frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
         
-        if self.cfg.DATA.FRAME_SAMPLING == 'like slowfast':
+        if self.cfg.MODEL.MODEL_NAME == 'SlowFast':
             # Perform color normalization.
             frames = frames.float()
             frames = frames / 255.0
@@ -196,7 +196,7 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = utils.pack_pathway_output(self.cfg, frames)
             metadata = self._video_records[index].metadata
             return frames, label, index, metadata
-        elif self.cfg.DATA.FRAME_SAMPLING == 'like omnivore':
+        elif self.cfg.MODEL.MODEL_NAME == 'Omnivore':
             scale = min_scale/frames.shape[1]
             frames = [
                     cv2.resize(

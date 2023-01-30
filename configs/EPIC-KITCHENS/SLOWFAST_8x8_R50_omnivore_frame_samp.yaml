@@ -1,10 +1,8 @@
 DATA:
   NUM_FRAMES: 32
-  SAMPLING_RATE: 1
-  TEST_CROP_SIZE: 224
+  SAMPLING_RATE: 2
+  TEST_CROP_SIZE: 256
   INPUT_CHANNEL_NUM: [3, 3]
-  MEAN: [0.485, 0.456, 0.406]
-  STD: [0.229, 0.224, 0.225]
   FRAME_SAMPLING: 'like omnivore'
 SLOWFAST:
   ALPHA: 4
@@ -33,26 +31,21 @@ BN:
   WEIGHT_DECAY: 0.0
 MODEL:
   NUM_CLASSES: [97, 300]
-  ARCH: omnivore_swinB_epic
-  MODEL_NAME: Omnivore
+  ARCH: slowfast
+  MODEL_NAME: SlowFast
   LOSS_FUNC: cross_entropy
   DROPOUT_RATE: 0.5
 TEST:
+  CHECKPOINT_FILE_PATH: 'checkpoint/SlowFast.pyth'
   ENABLE: True
   DATASET: epickitchens
-  BATCH_SIZE: 2
-  NUM_SPATIAL_CROPS: 1
+  BATCH_SIZE: 4
+  NUM_SPATIAL_CROPS: 3
   NUM_ENSEMBLE_VIEWS: 1
-  SLIDE:
-    ENABLE: True
-    WIN_SIZE: 4.0
-    HOP_SIZE: 0.5
-    LABEL_FRAME: 0.5
-    INSIDE_ACTION_BOUNDS: 'outside' # strict, outside, avoid
 DATA_LOADER:
   NUM_WORKERS: 8
   PIN_MEMORY: True
 EPICKITCHENS:
   TRAIN_PLUS_VAL: False
-NUM_GPUS: 1     # ✓✓✓✓✓✓
-OUTPUT_DIR: output   # ✓✓✓✓✓✓
+NUM_GPUS: 1
+OUTPUT_DIR: output

@@ -1,6 +1,6 @@
 DATA:
   NUM_FRAMES: 32
-  SAMPLING_RATE: 1
+  SAMPLING_RATE: 2
   TEST_CROP_SIZE: 256
   INPUT_CHANNEL_NUM: [3, 3]
   FRAME_SAMPLING: 'like slowfast'
@@ -44,15 +44,14 @@ TEST:
   NUM_ENSEMBLE_VIEWS: 1
   SLIDE:
     ENABLE: True
-    WIN_SIZE: 0.5
+    WIN_SIZE: 4.0
     HOP_SIZE: 0.5
-    LABEL_FRAME: 0.5 # only relevant with 'ignore'
-    INSIDE_ACTION_BOUNDS: 'ignore' # strict, outside, ignore
+    LABEL_FRAME: 0.5
+    INSIDE_ACTION_BOUNDS: 'outside' # strict, outside, avoid
 DATA_LOADER:
   NUM_WORKERS: 8
   PIN_MEMORY: True
 EPICKITCHENS:
   TRAIN_PLUS_VAL: False
-  VIDEO_DURS: 'EPIC_100_video_info.csv'
 NUM_GPUS: 1
 OUTPUT_DIR: output
