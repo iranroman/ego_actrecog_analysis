@@ -4,38 +4,15 @@ The code in this repo is a clone from [https://github.com/epic-kitchens/epic-kit
 
 Work in progress! 
 
-We added a dataloader for EPIC-KITCHENS-100
-- We added a training configuration file for EPIC-KITCHENS-100
-- We adapted the code to train on verb+noun as multi-task learning
 
-All the code to support EPIC-KITCHENS-100 is written by [Evangelos Kazakos](https://github.com/ekazakos).
+You can currently run different types of inference with the following pre-trained models:
 
-## Citing
+- SlowFast
+- Omnivore
 
-When using this code, kindly reference:
+Inference can be run on these datasets
 
-```
-@ARTICLE{Damen2020RESCALING,
-   title={Rescaling Egocentric Vision},
-   author={Damen, Dima and Doughty, Hazel and Farinella, Giovanni Maria  and and Furnari, Antonino 
-           and Ma, Jian and Kazakos, Evangelos and Moltisanti, Davide and Munro, Jonathan 
-           and Perrett, Toby and Price, Will and Wray, Michael},
-           journal   = {CoRR},
-           volume    = {abs/2006.13256},
-           year      = {2020},
-           ee        = {http://arxiv.org/abs/2006.13256},
-} 
-```
-and
-```
-@misc{fan2020pyslowfast,
-  author =       {Haoqi Fan and Yanghao Li and Bo Xiong and Wan-Yen Lo and
-                  Christoph Feichtenhofer},
-  title =        {PySlowFast},
-  howpublished = {\url{https://github.com/facebookresearch/slowfast}},
-  year =         {2020}
-}
-```
+- EPIC-KITCHENS 100 (validation set)
 
 ## Models
 The models used in this project:
@@ -45,11 +22,14 @@ The models used in this project:
  - [MTCN](https://github.com/ekazakos/MTCN)
  - [TSM]()
 
+The types of inference supported are:
 
-## Pretrained models
-
-- You can download our pretrained model on EPIC-KITCHENS-100 from [this link](https://www.dropbox.com/s/uxb6i2xkn91xqzi/SlowFast.pyth?dl=0)
-- You can download the Kinetics-400 pretrained model provided by the authors of SlowFast in [this link](https://dl.fbaipublicfiles.com/pyslowfast/model_zoo/kinetics400/SLOWFAST_8x8_R50.pkl)
+- Original SlowFast inference
+- Original Omnivore inference
+- Sliding fixed-size window:
+    - strictly inside action boundaries
+    - inside and around action boundaries
+    - sliding over full videos
 
 ## Preparation
 
@@ -91,8 +71,8 @@ The training/validation code expects the following folder structure for the data
 ```
 So, after downloading the dataset navigate under <participant_id>/rgb_frames for each participant and untar each video's frames in its corresponding folder, e.g for P01_01.tar you should create a folder P01_01 and extract the contents of the tar file inside.
 
-## Training/validation
-To train the model run:
+## To run
+To obtain scores on the validation set (using the model trained on the concatenation of the training and validation sets) run:
 ```
 python tools/run_net.py \
   --cfg configs/EPIC-KITCHENS/SLOWFAST_8x8_R50.yaml \
@@ -132,6 +112,12 @@ python tools/run_net.py \
   TEST.CHECKPOINT_FILE_PATH /path/to/experiment_dir/checkpoints/checkpoint_best.pyth \
   EPICKITCHENS.TEST_LIST EPIC_100_test_timestamps.pkl \
   EPICKITCHENS.TEST_SPLIT test
+
+# ---
+python tools/run_net.py --cfg configs/EPIC-KITCHENS/<config file name>.yaml  
+EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
+EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations 
+EPICKITCHENS.TEST_LIST EPIC_100_test_timestamps.pkl
 ```
 
 ## License 

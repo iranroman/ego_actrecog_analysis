@@ -136,6 +136,12 @@ _C.TEST.NUM_SPATIAL_CROPS = 3
 #############
 _C.TEST.CHECKPOINT_TYPE = "pytorch"
 
+_C.TEST.SLIDE = CfgNode()
+_C.TEST.SLIDE.ENABLE = False
+_C.TEST.SLIDE.WIN_SIZE = 1.
+_C.TEST.SLIDE.HOP_SIZE = 1.
+_C.TEST.SLIDE.LABEL_FRAME = 0.5
+_C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = 'strict'
 
 # -----------------------------------------------------------------------------
 # ResNet options
@@ -400,6 +406,8 @@ _C.DATA.TRAIN_CROP_SIZE = 224
 #############
 _C.DATA.TEST_CROP_SIZE = 256
 
+_C.DATA.FRAME_SAMPLING = 'like slowfast'
+
 
 # -----------------------------------------------------------------------------
 # Audio data options
@@ -548,111 +556,14 @@ _C.DATA_LOADER.PIN_MEMORY = True
 _C.DATA_LOADER.ENABLE_MULTI_THREAD_DECODE = False
 
 
-# ---------------------------------------------------------------------------- #
-# Detection options.
-# ---------------------------------------------------------------------------- #
-_C.DETECTION = CfgNode()
-
-# Whether enable video detection.
-#############
-# ✓✓✓✓✓✓✓✓✓ #
-#############
-_C.DETECTION.ENABLE = False
-
-# Aligned version of RoI. More details can be found at slowfast/models/head_helper.py
-_C.DETECTION.ALIGNED = True
-
-# Spatial scale factor.
-_C.DETECTION.SPATIAL_SCALE_FACTOR = 16
-
-# RoI tranformation resolution.
-_C.DETECTION.ROI_XFORM_RESOLUTION = 7
-
-
-# -----------------------------------------------------------------------------
-# AVA Dataset options
-# -----------------------------------------------------------------------------
-_C.AVA = CfgNode()
-
-# Directory path of frames.
-_C.AVA.FRAME_DIR = "/mnt/fair-flash3-east/ava_trainval_frames.img/"
-
-# Directory path for files of frame lists.
-_C.AVA.FRAME_LIST_DIR = (
-    "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
-)
-
-# Directory path for annotation files.
-_C.AVA.ANNOTATION_DIR = (
-    "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
-)
-
-# Filenames of training samples list files.
-_C.AVA.TRAIN_LISTS = ["train.csv"]
-
-# Filenames of test samples list files.
-_C.AVA.TEST_LISTS = ["val.csv"]
-
-# Filenames of box list files for training. Note that we assume files which
-# contains predicted boxes will have a suffix "predicted_boxes" in the
-# filename.
-_C.AVA.TRAIN_GT_BOX_LISTS = ["ava_train_v2.2.csv"]
-_C.AVA.TRAIN_PREDICT_BOX_LISTS = []
-
-# Filenames of box list files for test.
-_C.AVA.TEST_PREDICT_BOX_LISTS = ["ava_val_predicted_boxes.csv"]
-
-# This option controls the score threshold for the predicted boxes to use.
-_C.AVA.DETECTION_SCORE_THRESH = 0.9
-
-# If use BGR as the format of input frames.
-_C.AVA.BGR = False
-
-# Training augmentation parameters
-# Whether to use color augmentation method.
-_C.AVA.TRAIN_USE_COLOR_AUGMENTATION = False
-
-# Whether to only use PCA jitter augmentation when using color augmentation
-# method (otherwise combine with color jitter method).
-_C.AVA.TRAIN_PCA_JITTER_ONLY = True
-
-# Eigenvalues for PCA jittering. Note PCA is RGB based.
-_C.AVA.TRAIN_PCA_EIGVAL = [0.225, 0.224, 0.229]
-
-# Eigenvectors for PCA jittering.
-_C.AVA.TRAIN_PCA_EIGVEC = [
-    [-0.5675, 0.7192, 0.4009],
-    [-0.5808, -0.0045, -0.8140],
-    [-0.5836, -0.6948, 0.4203],
-]
-
-# Whether to do horizontal flipping during test.
-_C.AVA.TEST_FORCE_FLIP = False
-
-# Whether to use full test set for validation split.
-_C.AVA.FULL_TEST_ON_VAL = False
-
-# The name of the file to the ava label map.
-_C.AVA.LABEL_MAP_FILE = "ava_action_list_v2.2_for_activitynet_2019.pbtxt"
-
-# The name of the file to the ava exclusion.
-_C.AVA.EXCLUSION_FILE = "ava_val_excluded_timestamps_v2.2.csv"
-
-# The name of the file to the ava groundtruth.
-_C.AVA.GROUNDTRUTH_FILE = "ava_val_v2.2.csv"
-
-# Backend to process image, includes `pytorch` and `cv2`.
-_C.AVA.IMG_PROC_BACKEND = "cv2"
-
-
 # -----------------------------------------------------------------------------
 # EPIC-KITCHENS Dataset options
 # -----------------------------------------------------------------------------
 _C.EPICKITCHENS = CfgNode()
 
 _C.EPICKITCHENS.VISUAL_DATA_DIR = ""
-
 _C.EPICKITCHENS.AUDIO_DATA_FILE = ""
+_C.EPICKITCHENS.VIDEO_DURS = "EPIC_100_video_info.csv"
 
 #############
 # ✓✓✓✓✓✓✓✓✓ #
@@ -677,9 +588,6 @@ def _assert_and_infer_cfg(cfg):
     # BN assertions.
     if cfg.BN.USE_PRECISE_STATS:
         assert cfg.BN.NUM_BATCHES_PRECISE >= 0
-    # TRAIN assertions.
-    assert cfg.TRAIN.CHECKPOINT_TYPE in ["pytorch", "caffe2"]
-    assert cfg.TRAIN.BATCH_SIZE % cfg.NUM_GPUS == 0
 
     # TEST assertions.
     assert cfg.TEST.CHECKPOINT_TYPE in ["pytorch", "caffe2"]

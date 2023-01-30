@@ -4,11 +4,12 @@ import torch
 import torch.utils.data
 import cv2
 import numpy as np
+import datetime
 
 import slowfast.utils.logging as logging
 
 from .build import DATASET_REGISTRY
-from .epickitchens_record import EpicKitchensVideoRecord
+from .epickitchens_record import EpicKitchensVideoRecord, timestamp_to_sec
 
 from . import transform as transform
 from . import utils as utils
@@ -65,16 +66,78 @@ class Epickitchens(torch.utils.data.Dataset):
                                       for file in [self.cfg.EPICKITCHENS.TRAIN_LIST, self.cfg.EPICKITCHENS.VAL_LIST]]
 
         for file in path_annotations_pickle:
-            assert os.path.exists(file), "{} dir not found".format(
-                file
-            )
+            assert os.path.exists(file), "{} dir not found".format(file)
 
         self._video_records = []
+        # for file in path_annotations_pickle:
+        #     for tup in pd.read_pickle(file).iterrows():
+        #         for idx in range(self._num_clips):
+        #             self._video_records.append(EpicKitchensVideoRecord(tup, idx))
+        # # self._video_records = self._video_records[:10000]
+        iii = 0
+        video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
+        video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
+        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+            video_times = {}
         for file in path_annotations_pickle:
-            for tup in pd.read_pickle(file).iterrows():
-                for idx in range(self._num_clips):
-                    self._video_records.append(EpicKitchensVideoRecord(tup, idx))
-        # self._video_records = self._video_records[:10000]
+            for narr_id, row in pd.read_pickle(file).iterrows():
+                if not self.cfg.TEST.SLIDE.ENABLE:
+                    for idx in range(self._num_clips):
+                        self._video_records.append(EpicKitchensVideoRecord((narr_id, row), idx))
+                else:
+                    action_start_sec = timestamp_to_sec(row['start_timestamp'])
+                    action_stop_sec = timestamp_to_sec(row['stop_timestamp'])
+                    _win_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
+                    if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
+                        win_start_sec, win_stop_sec = _win_sec, _win_sec + self.cfg.TEST.SLIDE.WIN_SIZE
+                    elif self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'outside':
+                        win_start_sec, win_stop_sec = _win_sec - self.cfg.TEST.SLIDE.WIN_SIZE, _win_sec
+                    elif self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+                        win_label_sec = _win_sec
+                        win_start_sec = win_label_sec - self.cfg.TEST.SLIDE.LABEL_FRAME*self.cfg.TEST.SLIDE.WIN_SIZE
+                        win_stop_sec = win_start_sec + self.cfg.TEST.SLIDE.WIN_SIZE
+                    win_start_sec = max(0, win_start_sec)
+
+                    while (
+                        (win_stop_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else 
+                        (win_start_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'outside' else 
+                        (win_label_sec < action_stop_sec)
+                    ):
+                        ek_ann = row.copy()
+                        ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
+                        ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
+                        win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                        win_start_sec = max(0, win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE)
+                        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+                            # up to three sim actions per frame in validation set
+                            ek_ann['verb_class'] = [ek_ann['verb_class']] * 3
+                            ek_ann['noun_class'] = [ek_ann['noun_class']] * 3
+                            ek_ann['verb'] = [ek_ann['verb']] * 3
+                            ek_ann['noun'] = [ek_ann['noun']] * 3
+                            video_timestamp = f'{ek_ann["video_id"]}_{win_label_sec:.2f}'
+                            win_label_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                            if video_timestamp in video_times:
+                                video_record = self._video_records[video_times[video_timestamp]]
+                                unique_verb_noun = list(set(zip(video_record._series['verb_class'],video_record._series['noun_class'])))
+                                if (ek_ann["verb"],ek_ann["noun"]) not in unique_verb_noun:
+                                    video_record._series['verb_class'][len(unique_verb_noun)] = ek_ann['verb_class'][0]
+                                    video_record._series['noun_class'][len(unique_verb_noun)] = ek_ann['noun_class'][0]
+                                    video_record._series['verb'][len(unique_verb_noun)] = ek_ann['verb'][0]
+                                    video_record._series['noun'][len(unique_verb_noun)] = ek_ann['noun'][0]
+                                self._video_records[video_times[video_timestamp]] = video_record
+                                continue
+                            
+                            video_times[video_timestamp] = iii
+
+                        self._video_records.append(EpicKitchensVideoRecord((narr_id, ek_ann), 0))
+                        self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
+                        iii += 1
+
+        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+            for iii in range(len(self._video_records)):
+                self._video_records[iii]._series['noun_class'] = np.array(self._video_records[iii]._series['noun_class'])
+                self._video_records[iii]._series['verb_class'] = np.array(self._video_records[iii]._series['verb_class'])
+
         assert (
                 len(self._video_records) > 0
         ), "Failed to load EPIC-KITCHENS split {} from {}".format(
@@ -150,7 +213,6 @@ class Epickitchens(torch.utils.data.Dataset):
         scale = min_scale/frames.shape[1]
         if scale and scale != 1:
             frames = torch.stack([
-                # The new size order for cv2.resize is w, h.
                 torch.from_numpy(cv2.resize(img, (0, 0), fx=scale, fy=scale))
                 for img in frames.numpy()
             ])
@@ -197,9 +259,10 @@ class Epickitchens(torch.utils.data.Dataset):
         if self.mode in ["train", "train+val"]:
             # Data augmentation. C T F -> C F T -> C T F
             spec = combined_transforms(spec.permute(0, 2, 1)).permute(0, 2, 1)
-
+        
         spec = utils.pack_pathway_output(self.cfg, spec)
         return spec
+        
 
     def __len__(self):
         return len(self._video_records)

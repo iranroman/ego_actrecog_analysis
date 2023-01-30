@@ -10,6 +10,7 @@ TRAIN:
 DATA:
   NUM_FRAMES: 32
   SAMPLING_RATE: 2
+  FRAME_SAMPLING: 'like slowfast'
   # TRAIN_JITTER_SCALES: [256, 320]
   # TRAIN_CROP_SIZE: 224
   # TEST_CROP_SIZE: 256
@@ -57,7 +58,8 @@ MODEL:
   # LOSS_FUNC: cross_entropy
   # DROPOUT_RATE: 0.5
 TEST:
-  ENABLE: False
+  CHECKPOINT_FILE_PATH: 'checkpoint/SlowFast.pyth'
+  ENABLE: True
   DATASET: epickitchens
   BATCH_SIZE: 4
   NUM_SPATIAL_CROPS: 1
@@ -68,5 +70,5 @@ TEST:
 #   TRAIN_PLUS_VAL: False
 # NUM_GPUS: 8
 # NUM_SHARDS: 1
-RNG_SEED: 0
-OUTPUT_DIR: .
+NUM_GPUS: 1
+OUTPUT_DIR: output

@@ -30,7 +30,6 @@ def random_short_side_scale_jitter(images, min_size, max_size, boxes=None):
     if (width <= height and width == size) or (
         height <= width and height == size
     ):
-        print('here!!!!!!!!!')
         return images, boxes
     new_width = size
     new_height = size

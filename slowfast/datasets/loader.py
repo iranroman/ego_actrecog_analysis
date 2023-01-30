@@ -60,17 +60,6 @@ def construct_loader(cfg, split):
             `val`, and `test`.
     """
     assert split in ["train", "val", "test", "train+val"]
-    #if split in ["train", "train+val"]:
-    #    dataset_name = cfg.TRAIN.DATASET
-    #    batch_size = int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
-    #    shuffle = True
-    #    drop_last = True
-    #elif split in ["val"]:
-    #    dataset_name = cfg.TRAIN.DATASET
-    #    batch_size = int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
-    #    shuffle = False
-    #    drop_last = False
-    #elif split in ["test"]:
     dataset_name = cfg.TEST.DATASET
     batch_size = int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
     shuffle = False
@@ -89,7 +78,7 @@ def construct_loader(cfg, split):
         num_workers=cfg.DATA_LOADER.NUM_WORKERS,
         pin_memory=cfg.DATA_LOADER.PIN_MEMORY,
         drop_last=drop_last,
-        collate_fn=detection_collate if cfg.DETECTION.ENABLE else None,
+        collate_fn= None,
     )
     return loader
 

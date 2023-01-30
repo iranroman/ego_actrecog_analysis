@@ -14,7 +14,7 @@ import slowfast.utils.logging as logging
 import slowfast.utils.misc as misc
 from slowfast.datasets import loader
 from slowfast.models import build_model
-from slowfast.utils.meters import AVAMeter, TestMeter, EPICTestMeter
+from slowfast.utils.meters import EPICTestMeter
 
 logger = logging.get_logger(__name__)
 
@@ -81,7 +81,7 @@ def perform_test(test_loader, model, test_meter, cfg):
     finally:
         # Log epoch stats and print the final testing results.
         #if cfg.TEST.DATASET == 'epickitchens':
-        preds, labels, metadata = test_meter.finalize_metrics()
+        preds, labels, metadata = test_meter.finalize_metrics(inside_action_bounds=cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS)
         #else:
         #    test_meter.finalize_metrics()
         #    preds, labels, metadata = None, None, None
@@ -154,15 +154,17 @@ def test(cfg):
     test_loader = loader.construct_loader(cfg, "test")
     logger.info("Testing model for {} iterations".format(len(test_loader)))
 
-    num_clips = cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
+    # if slide.enable, each window plays an equal weight on the metrics
+    num_clips = 1 if cfg.TEST.SLIDE.ENABLE else cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS
     assert len(test_loader.dataset) % num_clips == 0
-    # Create meters for multi-view testing.
-    #if cfg.TEST.DATASET == 'epickitchens':
+
     test_meter = EPICTestMeter(
         len(test_loader.dataset) // num_clips, num_clips,
         cfg.MODEL.NUM_CLASSES,
         len(test_loader),
+        cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS if cfg.TEST.SLIDE.ENABLE else ''
     )
+
 
     # Perform multi-view test on the entire dataset.
     preds, labels, metadata = perform_test(test_loader, model, test_meter, cfg)
