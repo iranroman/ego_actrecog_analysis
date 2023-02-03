@@ -10,7 +10,7 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
-def retry_load_images(image_paths, retry=10, backend="pytorch"):
+def retry_load_images(image_paths, retry=10, backend="pytorch", flow=False):
     """
     This function is to load images with support of retrying for failed load.
 
@@ -23,7 +23,10 @@ def retry_load_images(image_paths, retry=10, backend="pytorch"):
         imgs (list): list of loaded images.
     """
     for i in range(retry):
-        imgs = [cv2.imread(image_path) for image_path in image_paths]
+        if flow:
+            imgs = [cv2.imread(image_path, cv2.IMREAD_GRAYSCALE) for image_path in image_paths]
+        else:
+            imgs = [cv2.imread(image_path) for image_path in image_paths]
 
         if all(img is not None for img in imgs):
             if backend == "pytorch":

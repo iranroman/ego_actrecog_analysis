@@ -660,16 +660,22 @@ class TSM(nn.Module):
             {"params": lr10_bias, "lr_mult": 10, "decay_mult": 0, "name": "lr10_bias"},
         ]
 
-    def forward(self, x, no_reshape=False):
+    def forward(self, x_y, no_reshape=False):
+        x, y = x_y
         x = torch.permute(x, (0,2,1,3,4))
-        nchans = x.size()[2]
-        base_out = self.base_model_rgb(x.reshape((-1,nchans)+x.size()[-2:]))
+        y = torch.permute(y, (0,2,1,3,4))
+        nchans_rgb = x.size()[2]
+        nchans_flow = y.size()[2]
+        base_out_rgb = self.base_model_rgb(x.reshape((-1,nchans_rgb)+x.size()[-2:]))
+        base_out_flow = self.base_model_flow(y.reshape((-1,nchans_flow)+y.size()[-2:]))
 
         if self.dropout > 0:
-            base_out = self.base_model_rgb.new_fc(base_out)
+            base_out_rgb = self.base_model_rgb.new_fc(base_out_rgb)
+            base_out_flow = self.base_model_flow.new_fc(base_out_flow)
 
         if not self.before_softmax:
-            base_out = self.softmax(base_out)
+            base_out_rgb = self.softmax(base_out_rgb)
+            base_out_flow = self.softmax(base_out_flow)
 
         if self.reshape:
             if self.is_shift and self.temporal_pool:
@@ -677,8 +683,13 @@ class TSM(nn.Module):
                     (-1, self.num_segments // 2) + base_out.size()[1:]
                 )
             else:
-                base_out = base_out.view((-1, self.num_segments) + base_out.size()[1:])
-            output = self.consensus(base_out)
+                base_out_rgb = base_out_rgb.view((-1, self.num_segments) + base_out_rgb.size()[1:])
+                base_out_flow = base_out_flow.view((-1, self.num_segments) + base_out_flow.size()[1:])
+            output_rgb = self.consensus(base_out_rgb)
+            output_flow = self.consensus(base_out_flow)
+            output = (output_rgb + output_flow) / 2
+            del output_rgb
+            del output_flow
             output = output.squeeze(1)
             return output[:,:self.num_classes[0]], output[:,self.num_classes[0]:]
 

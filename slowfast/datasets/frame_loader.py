@@ -63,3 +63,34 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
     img_paths = [os.path.join(path_to_video, img_tmpl.format(idx.item())) for idx in frame_idx]
     frames = utils.retry_load_images(img_paths)
     return frames
+
+def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_fps=60):
+    # Load video by loading its extracted frames
+    path_to_video = '{}/flow/{}'.format(cfg.EPICKITCHENS.VISUAL_DATA_DIR,
+                                                 #video_record.participant,
+                                                 video_record.untrimmed_video_name)
+    img_tmpl = "frame_{:010d}.jpg"
+    if cfg.TEST.SLIDE.ENABLE:
+        start_idx = 0
+        end_idx = cfg.TEST.SLIDE.WIN_SIZE * int(video_record.fps/2) - 1 # half of frames for flow compared to RGB
+        frame_idx = temporal_sampling(video_record.num_frames+1,
+                                      start_idx, end_idx, cfg.DATA.NUM_FRAMES,
+                                      start_frame=video_record.start_frame + 1, 
+                                      video_last_frame=video_record.time_end*video_record.fps)
+    elif cfg.DATA.FRAME_SAMPLING == 'like omnivore':
+
+        seg_size = float(int(video_record.num_frames/2) - 1) / cfg.DATA.NUM_FRAMES
+        seq = []
+        for i in range(cfg.DATA.NUM_FRAMES):
+            start = int(np.round(seg_size * i))
+            end = int(np.round(seg_size * (i + 1)))
+            seq.append((start + end) // 2)
+        frame_idx = torch.tensor(int(video_record.start_frame/2) + np.array(seq))
+    frame_idx = torch.repeat_interleave(frame_idx,cfg.MODEL.SEGMENT_LENGTH[1]) + torch.arange(cfg.MODEL.SEGMENT_LENGTH[1]).repeat(cfg.DATA.NUM_FRAMES)
+    img_paths_u = [os.path.join(path_to_video, 'u',img_tmpl.format(idx.item())) for idx in frame_idx]
+    img_paths_v = [os.path.join(path_to_video, 'v', img_tmpl.format(idx.item())) for idx in frame_idx]
+    img_paths = [val for pair in zip(img_paths_u, img_paths_v) for val in pair]
+    frames = utils.retry_load_images(img_paths, flow=True)
+    frames = torch.reshape(frames,(cfg.DATA.NUM_FRAMES, cfg.MODEL.SEGMENT_LENGTH[1]*2)+frames.size()[-2:])
+    frames = torch.permute(frames,(0,2,3,1))
+    return frames

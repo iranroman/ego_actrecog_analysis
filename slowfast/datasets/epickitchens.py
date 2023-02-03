@@ -13,7 +13,7 @@ from .epickitchens_record import EpicKitchensVideoRecord, timestamp_to_sec
 
 from . import transform as transform
 from . import utils as utils
-from .frame_loader import pack_frames_to_video_clip
+from .frame_loader import pack_frames_to_video_clip, pack_flow_frames_to_video_clip
 
 logger = logging.get_logger(__name__)
 
@@ -201,7 +201,12 @@ class Epickitchens(torch.utils.data.Dataset):
                 "Does not support {} mode".format(self.mode)
             )
 
-        frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
+        if self.cfg.MODEL.MODEL_NAME == 'TSM':
+            frames_rgb = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
+            frames_flow = pack_flow_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
+        else:
+            frames = pack_frames_to_video_clip(self.cfg, self._video_records[index], temporal_sample_index)
+
         
         if self.cfg.MODEL.MODEL_NAME == 'SlowFast':
             # Perform color normalization.
@@ -224,7 +229,42 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = utils.pack_pathway_output(self.cfg, frames)
             metadata = self._video_records[index].metadata
             return frames, label, index, metadata
-        else: #self.cfg.MODEL.MODEL_NAME == 'Omnivore':
+        elif self.cfg.MODEL.MODEL_NAME == 'TSM':
+            input_frames = []
+            for i, frames in enumerate([frames_rgb, frames_flow]):
+                scale = min_scale/frames.shape[1]
+                frames = [
+                        cv2.resize(
+                            img_array.numpy(),
+                            (0,0),
+                            fx=scale,fy=scale,  # The input order for OpenCV is w, h.
+                        )
+                        for img_array in frames
+                ]
+                frames = np.concatenate(
+                    [np.expand_dims(img_array, axis=0) for img_array in frames],
+                    axis=0,
+                )
+                frames = torch.from_numpy(np.ascontiguousarray(frames))
+                frames = torch.flip(frames,dims=[3]) if i ==0 else frames # from bgr to rgb
+                frames = frames.float()
+                frames = frames / 255.0
+                frames = frames - torch.tensor(self.cfg.DATA.MEAN) if i==0 else frames - 0.5
+                frames = frames / torch.tensor(self.cfg.DATA.STD) if i==0 else frames/0.226
+                # T H W C -> C T H W.
+                frames = frames.permute(3, 0, 1, 2)
+                frames = self.spatial_sampling(
+                    frames,
+                    spatial_idx=spatial_sample_index,
+                    min_scale=min_scale,
+                    max_scale=max_scale,
+                    crop_size=crop_size,
+                )
+                input_frames.append(frames)
+            label = self._video_records[index].label
+            metadata = self._video_records[index].metadata
+            return input_frames, label, index, metadata
+        elif self.cfg.MODEL.MODEL_NAME == 'Omnivore':
             scale = min_scale/frames.shape[1]
             frames = [
                     cv2.resize(
