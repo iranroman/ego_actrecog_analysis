@@ -60,7 +60,6 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
             end = int(np.round(seg_size * (i + 1)))
             seq.append((start + end) // 2)
         frame_idx = torch.tensor(video_record.start_frame + np.array(seq))
-
     img_paths = [os.path.join(path_to_video, img_tmpl.format(idx.item())) for idx in frame_idx]
     frames = utils.retry_load_images(img_paths)
     return frames

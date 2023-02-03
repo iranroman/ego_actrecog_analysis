@@ -121,6 +121,34 @@ class Epickitchens(torch.utils.data.Dataset):
                         self._spatial_temporal_idx.append(0)
                         iii += 1
 
+        '''
+        #
+        # (ugly) code to find out the total number
+        # of sliding windows that fit in the dataset
+        # (including no action labels)
+        #
+
+        total_points = 0
+        action_points = 0
+        test_videos = list(set(['_'.join(k.split('_')[:2]) for k in video_times]))
+        for k in test_videos:
+            print(k)
+            vdur = video_durs[k]
+            video_range = np.arange(0,vdur,self.cfg.TEST.SLIDE.HOP_SIZE)
+            print(np.floor(video_durs[k]/self.cfg.TEST.SLIDE.HOP_SIZE))
+            vtimes = [kk for kk in video_times.keys() if '_'.join(kk.split('_')[:2])==k]
+            vtimes = [float(k.split('_')[-1]) for k in vtimes]
+            noaction_frames = len([t for t in video_range if t not in vtimes])
+            print(len(vtimes))
+            print(len(video_range) - noaction_frames,len(vtimes))
+            assert len(video_range) - noaction_frames == len(vtimes)
+            total_points += len(video_range)
+            action_points += len(vtimes)
+
+        print('total points', total_points)
+        print('action points', action_points)
+        '''
+
         if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
             for iii in range(len(self._video_records)):
                 self._video_records[iii]._series['noun_class'] = np.array(self._video_records[iii]._series['noun_class'])
@@ -196,7 +224,7 @@ class Epickitchens(torch.utils.data.Dataset):
             frames = utils.pack_pathway_output(self.cfg, frames)
             metadata = self._video_records[index].metadata
             return frames, label, index, metadata
-        elif self.cfg.MODEL.MODEL_NAME == 'Omnivore':
+        else: #self.cfg.MODEL.MODEL_NAME == 'Omnivore':
             scale = min_scale/frames.shape[1]
             frames = [
                     cv2.resize(
@@ -211,6 +239,7 @@ class Epickitchens(torch.utils.data.Dataset):
                 axis=0,
             )
             frames = torch.from_numpy(np.ascontiguousarray(frames))
+            frames = torch.flip(frames,dims=[3]) # from bgr to rgb
             frames = frames.float()
             frames = frames / 255.0
             frames = frames - torch.tensor(self.cfg.DATA.MEAN)

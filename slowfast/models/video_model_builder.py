@@ -3,14 +3,22 @@
 
 """Video models."""
 
+import re
 import torch
 import torch.nn as nn
+import torchvision
 import pandas as pd
+from torch.nn.init import constant_
+from torch.nn.init import normal_
+from torch.utils import model_zoo
+from copy import deepcopy
 
 import slowfast.utils.weight_init_helper as init_helper
 
 from . import head_helper, resnet_helper, stem_helper
 from .build import MODEL_REGISTRY
+from .temporal_shift import make_temporal_shift
+from .basic_ops import ConsensusModule
 
 # Number of blocks for different stages given the model depth.
 _MODEL_STAGE_DEPTH = {50: (3, 4, 6, 3), 101: (3, 4, 23, 3)}
@@ -419,3 +427,302 @@ class Omnivore(nn.Module):
         noun = y_hardmax @ self.noun_matrix
         #verb, noun = self._omnioutput2verbnoun(y_hardmax) 
         return [verb, noun]
+
+
+def strip_module_prefix(state_dict):
+    return {re.sub("^module.", "", k): v for k, v in state_dict.items()}
+
+
+@MODEL_REGISTRY.register()
+class TSM(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.modality = cfg.MODEL.MODALITY
+        self.num_segments = cfg.MODEL.NUM_SEGMENTS
+        self.segment_length = cfg.MODEL.SEGMENT_LENGTH
+        self.reshape = True
+        self.before_softmax = cfg.MODEL.BEFORE_SOFTMAX
+        self.dropout = cfg.MODEL.DROPOUT_RATE
+        self.crop_num = cfg.MODEL.CROP_NUM
+        self.consensus_type = cfg.MODEL.CONCENSUS_TYPE
+        self.is_shift = cfg.MODEL.IS_SHIFT
+        self.shift_div = cfg.MODEL.SHIFT_DIV
+        self.shift_place = cfg.MODEL.SHIFT_PLACE
+        self.base_model_name = cfg.MODEL.BASE_MODEL
+        self.fc_lr5 = cfg.MODEL.FC_LR5
+        self.temporal_pool = cfg.MODEL.TEMPORAL_POOL
+        self.non_local = cfg.MODEL.NON_LOCAL
+        self.num_classes = cfg.MODEL.NUM_CLASSES
+
+        if not cfg.MODEL.BEFORE_SOFTMAX and consensus_type != "avg":
+            raise ValueError("Only avg consensus can be used after Softmax")
+
+        print(
+            f"""
+    Initializing {self.__class__.__name__} with base model: {self.base_model_name}.
+
+    {self.__class__.__name__} Configuration:
+        input_modality:     {self.modality}
+        num_segments:       {self.num_segments}
+        segment_length:     {self.segment_length}
+        consensus_module:   {self.consensus_type}
+        dropout_ratio:      {self.dropout}
+            """
+        )
+
+        self.base_model_rgb = self._prepare_base_model(self.base_model_name)
+
+        self.base_model_rgb = self._prepare_tsn(self.base_model_rgb, cfg.MODEL.NUM_CLASSES)
+
+        print("Creating model that operates on optical flow")
+        self.base_model_flow = self._construct_flow_model(self.base_model_rgb)
+
+        self.consensus = ConsensusModule(self.consensus_type)
+
+        if not self.before_softmax:
+            self.softmax = nn.Softmax()
+
+        self._enable_pbn = cfg.MODEL.PARTIAL_BN
+        if cfg.MODEL.PARTIAL_BN:
+            self.partialBN(True)
+
+    def _prepare_tsn(self, base_model, num_class):
+        feature_dim = getattr(
+            base_model, base_model.last_layer_name
+        ).in_features
+        if self.dropout == 0:
+            setattr(
+                base_model,
+                base_model.last_layer_name,
+                nn.Linear(feature_dim, sum(num_class)),
+            )
+            self.new_fc = None
+        else:
+            setattr(
+                base_model,
+                base_model.last_layer_name,
+                nn.Dropout(p=self.dropout),
+            )
+            base_model.new_fc = nn.Linear(feature_dim, sum(num_class))
+
+        std = 0.001
+        if base_model.new_fc is None:
+            normal_(
+                getattr(base_model, base_model.last_layer_name).weight, 0, std
+            )
+            constant_(getattr(base_model, base_model.last_layer_name).bias, 0)
+        else:
+            if hasattr(base_model.new_fc, "weight"):
+                normal_(base_model.new_fc.weight, 0, std)
+                constant_(base_model.new_fc.bias, 0)
+        return base_model
+
+    def _prepare_base_model(self, base_model):
+        print(f"base model: {base_model}")
+
+        if "resnet" in base_model:
+            _model = getattr(torchvision.models, base_model)(
+                pretrained=None
+            )
+            if self.is_shift:
+                print("Adding temporal shift...")
+
+                make_temporal_shift(
+                    _model,
+                    self.num_segments,
+                    n_div=self.shift_div,
+                    place=self.shift_place,
+                    temporal_pool=self.temporal_pool,
+                )
+
+            if self.non_local:
+                print("Adding non-local module...")
+                from ..ops.non_local import make_non_local
+
+                make_non_local(self.base_model, self.num_segments)
+
+            _model.last_layer_name = "fc"
+
+            _model.avgpool = nn.AdaptiveAvgPool2d(1)
+
+        else:
+            raise ValueError(f"Unknown base model: {base_model!r}")
+        return _model
+
+    def train(self, mode=True):
+        """
+        Override the default train() to freeze the BN parameters
+        :return:
+        """
+        super(TSM, self).train(mode)
+        count = 0
+        if self._enable_pbn and mode:
+            print("Freezing BatchNorm2D except the first one.")
+            for m in self.base_model.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    count += 1
+                    if count >= (2 if self._enable_pbn else 1):
+                        m.eval()
+                        # shutdown update in frozen mode
+                        m.weight.requires_grad = False
+                        m.bias.requires_grad = False
+
+    def partialBN(self, enable):
+        self._enable_pbn = enable
+
+    def get_optim_policies(self):
+        first_conv_weight = []
+        first_conv_bias = []
+        normal_weight = []
+        normal_bias = []
+        lr5_weight = []
+        lr10_bias = []
+        bn = []
+        custom_ops = []
+
+        conv_cnt = 0
+        bn_cnt = 0
+        for m in self.modules():
+            if (
+                isinstance(m, torch.nn.Conv2d)
+                or isinstance(m, torch.nn.Conv1d)
+                or isinstance(m, torch.nn.Conv3d)
+            ):
+                ps = list(m.parameters())
+                conv_cnt += 1
+                if conv_cnt == 1:
+                    first_conv_weight.append(ps[0])
+                    if len(ps) == 2:
+                        first_conv_bias.append(ps[1])
+                else:
+                    normal_weight.append(ps[0])
+                    if len(ps) == 2:
+                        normal_bias.append(ps[1])
+            elif isinstance(m, torch.nn.Linear):
+                ps = list(m.parameters())
+                if self.fc_lr5:
+                    lr5_weight.append(ps[0])
+                else:
+                    normal_weight.append(ps[0])
+                if len(ps) == 2:
+                    if self.fc_lr5:
+                        lr10_bias.append(ps[1])
+                    else:
+                        normal_bias.append(ps[1])
+
+            elif isinstance(m, torch.nn.BatchNorm2d):
+                bn_cnt += 1
+                # later BN's are frozen
+                if not self._enable_pbn or bn_cnt == 1:
+                    bn.extend(list(m.parameters()))
+            elif isinstance(m, torch.nn.BatchNorm3d):
+                bn_cnt += 1
+                # later BN's are frozen
+                if not self._enable_pbn or bn_cnt == 1:
+                    bn.extend(list(m.parameters()))
+            elif len(m._modules) == 0:
+                if len(list(m.parameters())) > 0:
+                    raise ValueError(
+                        "New atomic module type: {}. Need to give it a learning policy".format(
+                            type(m)
+                        )
+                    )
+
+        return [
+            {
+                "params": first_conv_weight,
+                "lr_mult": 5 if self.modality == "Flow" else 1,
+                "decay_mult": 1,
+                "name": "first_conv_weight",
+            },
+            {
+                "params": first_conv_bias,
+                "lr_mult": 10 if self.modality == "Flow" else 2,
+                "decay_mult": 0,
+                "name": "first_conv_bias",
+            },
+            {
+                "params": normal_weight,
+                "lr_mult": 1,
+                "decay_mult": 1,
+                "name": "normal_weight",
+            },
+            {
+                "params": normal_bias,
+                "lr_mult": 2,
+                "decay_mult": 0,
+                "name": "normal_bias",
+            },
+            {"params": bn, "lr_mult": 1, "decay_mult": 0, "name": "BN scale/shift"},
+            {"params": custom_ops, "lr_mult": 1, "decay_mult": 1, "name": "custom_ops"},
+            # for fc
+            {"params": lr5_weight, "lr_mult": 5, "decay_mult": 1, "name": "lr5_weight"},
+            {"params": lr10_bias, "lr_mult": 10, "decay_mult": 0, "name": "lr10_bias"},
+        ]
+
+    def forward(self, x, no_reshape=False):
+        x = torch.permute(x, (0,2,1,3,4))
+        nchans = x.size()[2]
+        base_out = self.base_model_rgb(x.reshape((-1,nchans)+x.size()[-2:]))
+
+        if self.dropout > 0:
+            base_out = self.base_model_rgb.new_fc(base_out)
+
+        if not self.before_softmax:
+            base_out = self.softmax(base_out)
+
+        if self.reshape:
+            if self.is_shift and self.temporal_pool:
+                base_out = base_out.view(
+                    (-1, self.num_segments // 2) + base_out.size()[1:]
+                )
+            else:
+                base_out = base_out.view((-1, self.num_segments) + base_out.size()[1:])
+            output = self.consensus(base_out)
+            output = output.squeeze(1)
+            return output[:,:self.num_classes[0]], output[:,self.num_classes[0]:]
+
+    def _construct_flow_model(self, base_model):
+        # modify the convolution layers
+        # Torch models are usually defined in a hierarchical way.
+        # nn.modules.children() return all sub modules in a DFS manner
+        modules = list(base_model.modules())
+        first_conv_idx = list(
+            filter(
+                lambda x: isinstance(modules[x], nn.Conv2d), list(range(len(modules)))
+            )
+        )[0]
+        conv_layer = modules[first_conv_idx]
+        container = modules[first_conv_idx - 1]
+        container = deepcopy(container)
+
+        # modify parameters, assume the first blob contains the convolution kernels
+        params = [x.clone() for x in conv_layer.parameters()]
+        kernel_size = params[0].size()
+        new_kernel_size = kernel_size[:1] + (2 * self.segment_length[1],) + kernel_size[2:] # the second element in segment is the one for Flow
+        new_kernels = (
+            params[0]
+            .data.mean(dim=1, keepdim=True)
+            .expand(new_kernel_size)
+            .contiguous()
+        )
+
+        new_conv = nn.Conv2d(
+            2 * self.segment_length[1], # the second element in segment is the one for Flow
+            conv_layer.out_channels,
+            conv_layer.kernel_size,
+            conv_layer.stride,
+            conv_layer.padding,
+            bias=True if len(params) == 2 else False,
+        )
+        new_conv.weight.data = new_kernels
+        if len(params) == 2:
+            new_conv.bias.data = params[1].data  # add bias if neccessary
+        layer_name = list(container.state_dict().keys())[0][
+            :-7
+        ]  # remove .weight suffix to get the layer name
+
+        # replace the first convlution layer
+        setattr(container, layer_name, new_conv)
+
+        return container

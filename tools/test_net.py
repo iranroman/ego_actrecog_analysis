@@ -122,10 +122,10 @@ def test(cfg):
     if du.is_master_proc():
         if cfg.MODEL.MODEL_NAME == 'SlowFast':
             misc.log_model_info(model, cfg, is_train=False)
-        # TODO: make it work with Omnivore
+        # TODO: make it work with Omnivore and TSM
 
-    if cfg.MODEL.MODEL_NAME == 'SlowFast':
     # Load a checkpoint to test if applicable.
+    if cfg.MODEL.MODEL_NAME == 'SlowFast':
         cu.load_checkpoint(
             cfg.TEST.CHECKPOINT_FILE_PATH,
             model,
@@ -134,6 +134,15 @@ def test(cfg):
             inflation=False,
             convert_from_caffe2=cfg.TEST.CHECKPOINT_TYPE == "caffe2",
         )
+    elif cfg.MODEL.MODEL_NAME == 'TSM':
+        [cu.load_checkpoint(
+            f'{cfg.TEST.CHECKPOINT_FILE_PATH}_{t}.ckpt',
+            getattr(model,f'base_model_{t}'),
+            cfg.NUM_GPUS > 1,
+            None,
+            inflation=False,
+            convert_from_caffe2=cfg.TEST.CHECKPOINT_TYPE == "caffe2",
+        ) for t in ['rgb','flow']]
 
     # Create video testing loaders.
     test_loader = loader.construct_loader(cfg, "test")

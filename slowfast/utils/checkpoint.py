@@ -243,9 +243,13 @@ def load_checkpoint(
             )
             ms.load_state_dict(inflated_model_dict, strict=False)
         else:
-            ms.load_state_dict(checkpoint["model_state"])
-            # Load the optimizer state (commonly not done when fine-tuning)
+            if 'model_state' in checkpoint.keys():
+                ms.load_state_dict(checkpoint["model_state"])
+            elif 'state_dict' in checkpoint.keys():
+                checkpoint['state_dict'] = {(k[17:] if ('base_model' in k) else (k[6:] if 'model' in k else k)):v for k,v in checkpoint['state_dict'].items()} # hacky adjustment needed to use the TSM checkpoints
+                ms.load_state_dict(checkpoint["state_dict"])
             if optimizer:
+            # Load the optimizer state (commonly not done when fine-tuning)
                 optimizer.load_state_dict(checkpoint["optimizer_state"])
         if "epoch" in checkpoint.keys():
             epoch = checkpoint["epoch"]

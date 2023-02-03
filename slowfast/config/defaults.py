@@ -229,6 +229,24 @@ _C.MODEL.DROPOUT_RATE = 0.5
 #############
 _C.MODEL.FC_INIT_STD = 0.01
 
+###############
+# TSM configs #
+###############
+_C.MODEL.MODALITY = 'RGB' # RGB, Flow, Both
+_C.MODEL.BASE_MODEL = 'resnet50'
+_C.MODEL.NUM_SEGMENTS = 8
+_C.MODEL.SEGMENT_LENGTH = [1,5] # RGB:1, Flow: 5
+_C.MODEL.BEFORE_SOFTMAX = True
+_C.MODEL.CROP_NUM = 1
+_C.MODEL.CONCENSUS_TYPE = 'avg'
+_C.MODEL.PARTIAL_BN = True
+_C.MODEL.PRETRAINED = 'kinetics'
+_C.MODEL.IS_SHIFT = True
+_C.MODEL.SHIFT_DIV = 8
+_C.MODEL.SHIFT_PLACE = 'blockres'
+_C.MODEL.FC_LR5 = False
+_C.MODEL.TEMPORAL_POOL = False
+_C.MODEL.NON_LOCAL = False
 
 # -----------------------------------------------------------------------------
 # Slowfast options

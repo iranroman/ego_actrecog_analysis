@@ -47,7 +47,7 @@ TEST:
     WIN_SIZE: 4.0
     HOP_SIZE: 0.5
     LABEL_FRAME: 0.5
-    INSIDE_ACTION_BOUNDS: 'outside' # strict, outside, avoid
+    INSIDE_ACTION_BOUNDS: 'ignore' # strict, outside, ignore
 DATA_LOADER:
   NUM_WORKERS: 8
   PIN_MEMORY: True

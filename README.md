@@ -9,6 +9,7 @@ You can currently run different types of inference with the following pre-traine
 
 - SlowFast
 - Omnivore
+- TSM
 
 Inference can be run on these datasets
 
@@ -66,10 +67,9 @@ So, after downloading the dataset navigate under <participant_id>/rgb_frames for
 ## To run
 To obtain scores on the validation set (using the model trained on the concatenation of the training and validation sets) run:
 ```
-python tools/run_net.py --cfg configs/EPIC-KITCHENS/<config file name>.yaml  
+python tools/run_net.py --cfg configs/EPIC-KITCHENS/<configi*file*name>.yaml  
 EPICKITCHENS.VISUAL_DATA_DIR /path/to/dataset 
 EPICKITCHENS.ANNOTATIONS_DIR /path/to/annotations 
-EPICKITCHENS.TEST_LIST EPIC_100_test_timestamps.pkl
 ```
 
 ## License 
