@@ -136,7 +136,7 @@ class SlowFast(nn.Module):
     https://arxiv.org/pdf/1812.03982.pdf
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, return_features=False):
         """
         The `__init__` method of any subclass should also contain these
             arguments.
@@ -147,6 +147,7 @@ class SlowFast(nn.Module):
         super(SlowFast, self).__init__()
         self.enable_detection = False
         self.num_pathways = 2
+        self.return_features = return_features
         self._construct_network(cfg)
         init_helper.init_weights(
             self, cfg.MODEL.FC_INIT_STD, cfg.RESNET.ZERO_INIT_FINAL_BN
@@ -333,6 +334,7 @@ class SlowFast(nn.Module):
                 ],
             ],
             dropout_rate=cfg.MODEL.DROPOUT_RATE,
+            return_features=self.return_features,
         )
 
     def forward(self, x, bboxes=None):

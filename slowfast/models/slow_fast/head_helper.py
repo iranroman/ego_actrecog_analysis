@@ -146,6 +146,7 @@ class ResNetBasicHead(nn.Module):
         pool_size,
         dropout_rate=0.0,
         act_func="softmax",
+        return_features=True,
     ):
         """
         The `__init__` method of any subclass should also contain these
@@ -170,6 +171,7 @@ class ResNetBasicHead(nn.Module):
             len({len(pool_size), len(dim_in)}) == 1
         ), "pathway dimensions are not consistent."
         self.num_pathways = len(pool_size)
+        self.return_features = return_features
 
         for pathway in range(self.num_pathways):
             avg_pool = nn.AvgPool3d(pool_size[pathway], stride=1)
@@ -214,14 +216,20 @@ class ResNetBasicHead(nn.Module):
             x = self.dropout(x)
 
         if isinstance(self.num_classes, (list, tuple)):
-            return (
+            y = (
                 self._post(self.projection_verb(x)),
                 self._post(self.projection_noun(x)),
             )
         elif self.num_classes:
-            return self._post(self.projection(x))
+            y = self._post(self.projection(x))
         else:
             return x.mean([1, 2, 3]) # squeezes out ones -> [batch, features]
+
+        if self.return_features:
+            return y, x
+        return y
+        
+
 
     def _post(self, x):
         # Performs fully convlutional inference.
