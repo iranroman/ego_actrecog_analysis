@@ -261,6 +261,9 @@ _C.MODEL = CfgNode()
 #############
 _C.MODEL.ARCH = "slowfast"
 
+# Actionformer meta arch
+_C.MODEL.META_ARCH = "slowfast"
+
 # Model name
 #############
 # ✓✓✓✓✓✓✓✓✓ #

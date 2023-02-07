@@ -1,4 +1,5 @@
 import setuptools
+# from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 setuptools.setup(
     name='slowfast',
@@ -31,6 +32,16 @@ setuptools.setup(
         # kinetics
         'av',
     ],
+    # # actionformer
+    # ext_modules=[
+    #     CppExtension(
+    #         name = 'nms_1d_cpu',
+    #         sources = ['./slowfast/models/actionformer/nms_1d_cpu/nms_cpu.cpp'],
+    #         extra_compile_args=['-fopenmp']
+    #     )
+    # ],
+    # cmdclass={'build_ext': BuildExtension},
+    # 
     extras_require={
         # 'slowfast': ['detectron2'],
         # 'auditory_slowfast': ['librosa'],

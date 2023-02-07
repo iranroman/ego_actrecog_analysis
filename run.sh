@@ -32,9 +32,17 @@ python tools/run_net.py \
 python tools/run_net.py \
   --cfg configs/EPIC-KITCHENS/AUDIO_SLOWFAST_R50.yaml \
   OUTPUT_DIR ./output/audslowfast \
-  EPICKITCHENS.AUDIO_DATA_FILE ../EPIC_audio.hdf5 \
+  EPICKITCHENS.AUDIO_DATA_FILE /datasets/EPIC-KITCHENS/EPIC_audio.hdf5 \
   TRAIN.ENABLE False TEST.ENABLE True \
-  TEST.CHECKPOINT_FILE_PATH checkpoints/AUD_SLOWFAST_EPIC.pyth
+  TEST.CHECKPOINT_FILE_PATH checkpoints/AUD_SLOWFAST_EPIC.pyth DATA_LOADER.NUM_WORKERS 0
+
+python tools/run_net.py \
+  --cfg configs/EPIC-KITCHENS/AUDIO_SLOWFAST_R50.yaml \
+  OUTPUT_DIR ./output/audslowfast \
+  EPICKITCHENS.AUDIO_DATA_FILE /datasets/EPIC-KITCHENS/EPIC_audio.hdf5 \
+  TRAIN.ENABLE False TEST.ENABLE True \
+  TEST.CHECKPOINT_FILE_PATH checkpoints/AUD_SLOWFAST_EPIC.pyth \
+  TEST.SLIDE.ENABLE TEST.SLIDE.WIN_SIZE 1 TEST.SLIDE.HOP_SIZE 1
 
 # Omnivore
 

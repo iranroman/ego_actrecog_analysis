@@ -14,8 +14,8 @@ from .epickitchens_record import EpicKitchensVideoRecord, timestamp_to_sec
 from . import transform as transform
 from . import utils as utils
 from .frame_loader import pack_frames_to_video_clip
-# from .audio_loader_epic import pack_audio
-from .audio_loader_epic_og import pack_audio
+from .audio_loader_epic import pack_audio
+# from .audio_loader_epic_og import pack_audio
 
 logger = logging.get_logger(__name__)
 
@@ -252,8 +252,8 @@ class Epickitchens(torch.utils.data.Dataset):
                 "Does not support {} mode".format(self.mode)
             )
 
-        # spec = pack_audio(self.cfg, record, temporal_sample_index, self._num_clips, h5_reader=self.audio_dataset)
-        spec = pack_audio(self.cfg, self.audio_dataset, record, temporal_sample_index)
+        spec = pack_audio(self.cfg, record, temporal_sample_index, self._num_clips, audio_dataset=self.audio_dataset)
+        # spec = pack_audio(self.cfg, self.audio_dataset, record, temporal_sample_index)
         # Normalization.
         spec = spec.float()
         if self.mode in ["train", "train+val"]:

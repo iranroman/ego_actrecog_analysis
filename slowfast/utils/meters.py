@@ -115,7 +115,7 @@ class EPICTestMeter(object):
     def iter_toc(self):
         self.iter_timer.pause()
 
-    def finalize_metrics(self, ks=(1, 5), inside_action_bounds=''):
+    def finalize_metrics(self, ks=(1, 5)):
         """
         Calculate and log the final ensembled metrics.
         ks (tuple): list of top-k values for topk_accuracies. For example,
@@ -128,12 +128,15 @@ class EPICTestMeter(object):
                 )
             )
             logger.warning(self.clip_count)
-        return self.compute_metrics(ks, inside_action_bounds)
+        return self.compute_metrics(ks)
 
-    def compute_metrics(self, ks=(1, 5), inside_action_bounds=''):
-        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, inside_action_bounds)
-        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, inside_action_bounds)
-        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks, inside_action_bounds)
+    def compute_metrics(self, ks=(1, 5)):
+        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, self.inside_action_bounds)
+        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, self.inside_action_bounds)
+        actn_topks = metrics.multitask_topk_accuracies(
+            (self.verb_video_preds,self.noun_video_preds), 
+            (self.verb_video_labels,self.noun_video_labels), 
+            ks, self.inside_action_bounds)
 
         assert len({len(ks), len(verb_topks)}) == 1
         assert len({len(ks), len(noun_topks)}) == 1
@@ -155,9 +158,12 @@ class EPICTestMeter(object):
         }).pivot(index='topk', columns='pos', values='acc').sort_index(axis=1)
         logger.info(f'\n{stats_df}')
 
-        return (self.verb_video_preds.numpy().copy(), self.noun_video_preds.numpy().copy()), \
-               (self.verb_video_labels.numpy().copy(), self.noun_video_labels.numpy().copy()), \
-               self.metadata.copy()
+        return (
+            (self.verb_video_preds.numpy().copy(), self.noun_video_preds.numpy().copy()), 
+            (self.verb_video_labels.numpy().copy(), self.noun_video_labels.numpy().copy()), 
+            self.metadata.copy(), 
+            stats_df,
+        )
 
 
 

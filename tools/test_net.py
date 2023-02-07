@@ -51,40 +51,30 @@ def perform_test(test_loader, model, test_meter, cfg):
             labels = misc.to_cuda_recursive(labels)
 
             # Perform the forward pass.
-            # print(misc.call_recursive(lambda x: f'{x.shape} {x.min():.4f} {x.max():.4f}', inputs))
             preds = model(inputs)
-            # print(misc.call_recursive(lambda x: f'{x.shape} {x.min():.4f} {x.max():.4f}', preds))
-            verb_preds, noun_preds = preds
-            verb_labels, noun_labels = labels
 
             # Gather all the predictions across all the devices to perform ensemble.
             if cfg.NUM_GPUS > 1:
-                _x = verb_preds, noun_preds, verb_labels, noun_labels
-                verb_preds, noun_preds, verb_labels, noun_labels = du.all_gather(_x)
-
+                preds = du.all_gather(preds)
+                labels = du.all_gather(labels)
                 meta = du.all_gather_unaligned(metadata)
                 metadata = {k: [x for m in meta for x in m[k]] for k in meta[0]} if meta else {}
 
             test_meter.iter_toc()
             # Update and log stats.
             test_meter.update_stats(
-                (verb_preds.detach().cpu(), noun_preds.detach().cpu()),
-                (verb_labels.detach().cpu(), noun_labels.detach().cpu()),
+                misc.call_recursive(lambda x: x.detach().cpu(), preds),
+                misc.call_recursive(lambda x: x.detach().cpu(), labels),
                 metadata, video_idx
             )
             test_meter.log_iter_stats(cur_iter)
 
             if cur_iter % 100 == 0:
-                test_meter.compute_metrics(inside_action_bounds=cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS)
+                test_meter.compute_metrics()
 
             test_meter.iter_tic()
     finally:
-        # Log epoch stats and print the final testing results.
-        #if cfg.TEST.DATASET == 'epickitchens':
-        preds, labels, metadata = test_meter.finalize_metrics(inside_action_bounds=cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS)
-        #else:
-        #    test_meter.finalize_metrics()
-        #    preds, labels, metadata = None, None, None
+        preds, labels, metadata = test_meter.finalize_metrics()
         test_meter.reset()
     return preds, labels, metadata
 
@@ -95,6 +85,12 @@ def _load_nested_checkpoint(model, path, num_gpus):
 
     # recursively load checkpoints - for heterogeneous models - allow path to be a nested dict
     if isinstance(path, dict):
+        if '__key' in path:
+            # sometimes checkpoints need a wrapper class because the 
+            wrapper = torch.nn.Module()
+            setattr(wrapper, path['__key'], model)
+            _load_nested_checkpoint(wrapper, path['path'], num_gpus)
+            return 
         for k, p in path.items():
             _load_nested_checkpoint(getattr(model, k), p, num_gpus)
         return
@@ -164,7 +160,6 @@ def test(cfg):
         len(test_loader),
         cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS if cfg.TEST.SLIDE.ENABLE else ''
     )
-
 
     # Perform multi-view test on the entire dataset.
     preds, labels, metadata = perform_test(test_loader, model, test_meter, cfg)
