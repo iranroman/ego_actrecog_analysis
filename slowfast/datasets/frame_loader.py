@@ -5,7 +5,7 @@ from . import utils as utils
 from .decoder import get_start_end_idx
 
 
-def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0, video_last_frame=float('inf')):
+def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0, video_last_frame=float('inf'), action_last_frame = float('inf')):
     """
     Given the start and end frame index, sample num_samples frames between
     the start and end with equal interval.
@@ -22,7 +22,7 @@ def temporal_sampling(num_frames, start_idx, end_idx, num_samples, start_frame=0
     index = torch.linspace(start_idx, end_idx, num_samples)
     index += start_frame
     end_frame = start_frame + num_frames - 1
-    index = torch.clamp(index, start_frame, end_frame if end_frame < video_last_frame else video_last_frame).long()
+    index = torch.clamp(index, start_frame, end_frame if (end_frame < action_last_frame and end_frame < video_last_frame) else video_last_frame if video_last_frame < action_last_frame else action_last_frame).long()
     return index
 
 
@@ -38,7 +38,8 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
         frame_idx = temporal_sampling(video_record.num_frames+1,
                                       start_idx, end_idx, cfg.DATA.NUM_FRAMES,
                                       start_frame=video_record.start_frame + 1, 
-                                      video_last_frame=video_record.time_end*video_record.fps)
+                                      video_last_frame=video_record.time_end*video_record.fps,
+                                      action_last_frame=video_record._series['action_stop_frame'] if cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else float('inf'))
     elif cfg.DATA.FRAME_SAMPLING == 'like slowfast':
         fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
         start_idx, end_idx = get_start_end_idx(
@@ -73,10 +74,11 @@ def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, tar
     if cfg.TEST.SLIDE.ENABLE:
         start_idx = 0
         end_idx = cfg.TEST.SLIDE.WIN_SIZE * int(video_record.fps/2) - 1 # half of frames for flow compared to RGB
-        frame_idx = temporal_sampling(video_record.num_frames+1,
+        frame_idx = temporal_sampling(int(video_record.num_frames/2)+1,
                                       start_idx, end_idx, cfg.DATA.NUM_FRAMES,
-                                      start_frame=video_record.start_frame + 1, 
-                                      video_last_frame=video_record.time_end*video_record.fps)
+                                      start_frame=int(video_record.start_frame//2) + 1, 
+                                      video_last_frame=np.floor(video_record.time_end*video_record.fps)/2,
+                                      action_last_frame=int(video_record._series['action_stop_frame']//2) if cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else float('inf'))
     elif cfg.DATA.FRAME_SAMPLING == 'like omnivore':
 
         seg_size = float(int(video_record.num_frames/2) - 1) / cfg.DATA.NUM_FRAMES
@@ -87,6 +89,7 @@ def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, tar
             seq.append((start + end) // 2)
         frame_idx = torch.tensor(int(video_record.start_frame/2) + np.array(seq))
     frame_idx = torch.repeat_interleave(frame_idx,cfg.MODEL.SEGMENT_LENGTH[1]) + torch.arange(cfg.MODEL.SEGMENT_LENGTH[1]).repeat(cfg.DATA.NUM_FRAMES)
+    frame_idx = torch.clamp(frame_idx,max=int(video_record._series['action_stop_frame']//2) if cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else (np.floor(video_record.time_end*video_record.fps/2) if cfg.TEST.SLIDE.ENABLE else float('inf'))).long()
     img_paths_u = [os.path.join(path_to_video, 'u',img_tmpl.format(idx.item())) for idx in frame_idx]
     img_paths_v = [os.path.join(path_to_video, 'v', img_tmpl.format(idx.item())) for idx in frame_idx]
     img_paths = [val for pair in zip(img_paths_u, img_paths_v) for val in pair]

@@ -86,7 +86,7 @@ _C.TEST.SLIDE.ENABLE = False
 _C.TEST.SLIDE.WIN_SIZE = 1.
 _C.TEST.SLIDE.HOP_SIZE = 1.
 _C.TEST.SLIDE.LABEL_FRAME = 0.5
-_C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = 'strict'
+_C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = ''
 
 # -----------------------------------------------------------------------------
 # ResNet options
@@ -232,7 +232,6 @@ _C.MODEL.FC_INIT_STD = 0.01
 ###############
 # TSM configs #
 ###############
-_C.MODEL.MODALITY = 'RGB' # RGB, Flow, Both
 _C.MODEL.BASE_MODEL = 'resnet50'
 _C.MODEL.NUM_SEGMENTS = 8
 _C.MODEL.SEGMENT_LENGTH = [1,5] # RGB:1, Flow: 5

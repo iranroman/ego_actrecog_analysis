@@ -437,7 +437,6 @@ def strip_module_prefix(state_dict):
 class TSM(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.modality = cfg.MODEL.MODALITY
         self.num_segments = cfg.MODEL.NUM_SEGMENTS
         self.segment_length = cfg.MODEL.SEGMENT_LENGTH
         self.reshape = True
@@ -462,7 +461,6 @@ class TSM(nn.Module):
     Initializing {self.__class__.__name__} with base model: {self.base_model_name}.
 
     {self.__class__.__name__} Configuration:
-        input_modality:     {self.modality}
         num_segments:       {self.num_segments}
         segment_length:     {self.segment_length}
         consensus_module:   {self.consensus_type}
@@ -688,8 +686,6 @@ class TSM(nn.Module):
             output_rgb = self.consensus(base_out_rgb)
             output_flow = self.consensus(base_out_flow)
             output = (output_rgb + output_flow) / 2
-            del output_rgb
-            del output_flow
             output = output.squeeze(1)
             return output[:,:self.num_classes[0]], output[:,self.num_classes[0]:]
 

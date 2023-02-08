@@ -85,10 +85,16 @@ class Epickitchens(torch.utils.data.Dataset):
                         win_start_sec = win_label_sec - self.cfg.TEST.SLIDE.LABEL_FRAME*self.cfg.TEST.SLIDE.WIN_SIZE
                         win_stop_sec = win_label_sec + (1-self.cfg.TEST.SLIDE.LABEL_FRAME)*self.cfg.TEST.SLIDE.WIN_SIZE
                     win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
-                    while (win_stop_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict' else (win_start_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'outside' else (win_label_sec < action_stop_sec):
+                    while (win_start_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS != 'ignore' else (win_label_sec < action_stop_sec):
                         ek_ann = tup[1].copy()
                         ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
+                        ek_ann['action_stop_frame'] = action_stop_sec * self.target_fps
+                        if win_stop_sec > action_stop_sec and self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
+                            self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
+                            self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
+                            self._spatial_temporal_idx.append(0)
+                            break
                         win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                         win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
                         win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0

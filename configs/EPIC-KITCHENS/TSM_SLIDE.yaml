@@ -30,6 +30,12 @@ TEST:
   BATCH_SIZE: 4
   NUM_SPATIAL_CROPS: 1
   NUM_ENSEMBLE_VIEWS: 1
+  SLIDE:
+    ENABLE: True
+    WIN_SIZE: 4.0
+    HOP_SIZE: 0.5
+    LABEL_FRAME: 0.5
+    INSIDE_ACTION_BOUNDS: 'outside' # strict, outside, ignore
 DATA_LOADER:
   NUM_WORKERS: 8
   PIN_MEMORY: True
