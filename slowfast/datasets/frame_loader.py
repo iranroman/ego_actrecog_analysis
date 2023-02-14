@@ -84,10 +84,10 @@ def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, tar
             temporal_sample_index,
             cfg.TEST.NUM_ENSEMBLE_VIEWS,
         )
-        start_idx, end_idx = start_idx + 1, end_idx + 1
+        start_idx, end_idx = int(start_idx/2) + 1, int(end_idx/2) + 1
         frame_idx = temporal_sampling(int(video_record.num_frames/2),
-                                      int(start_idx/2), int(end_idx/2), num_samples,
-                                      start_frame=video_record.start_frame)
+                                      start_idx, end_idx, num_samples,
+                                      start_frame=int(video_record.start_frame/2))
     elif cfg.DATA.FRAME_SAMPLING == 'like omnivore':
 
         seg_size = float(int(video_record.num_frames/2) - 1) / cfg.DATA.NUM_FRAMES
