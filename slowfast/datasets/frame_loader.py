@@ -84,7 +84,7 @@ def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, tar
             temporal_sample_index,
             cfg.TEST.NUM_ENSEMBLE_VIEWS,
         )
-        start_idx, end_idx = int(start_idx/2) + 1, int(end_idx/2) + 1
+        start_idx, end_idx = int((start_idx)/2) + 1, int((end_idx)/2) + 1
         frame_idx = temporal_sampling(int(video_record.num_frames/2),
                                       start_idx, end_idx, num_samples,
                                       start_frame=int(video_record.start_frame/2))
@@ -98,7 +98,7 @@ def pack_flow_frames_to_video_clip(cfg, video_record, temporal_sample_index, tar
             seq.append((start + end) // 2)
         frame_idx = torch.tensor(int(video_record.start_frame/2) + np.array(seq))
     frame_idx = torch.repeat_interleave(frame_idx,cfg.MODEL.SEGMENT_LENGTH[1]) + torch.arange(cfg.MODEL.SEGMENT_LENGTH[1]).repeat(cfg.DATA.NUM_FRAMES)
-    frame_idx = torch.clamp(frame_idx,max=int(video_record._series['action_stop_frame']//2) if (cfg.TEST.SLIDE.ENABLE and cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS) else (np.floor(video_record.time_end*video_record.fps/2) if cfg.TEST.SLIDE.ENABLE else float('inf'))).long()
+    frame_idx = torch.clamp(frame_idx,max=int(video_record._series['action_stop_frame']//2) if (cfg.TEST.SLIDE.ENABLE and cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS) else (np.floor(video_record.time_end*video_record.fps/2))).long()
     path_to_video = '{}/flow/{}'.format(cfg.EPICKITCHENS.VISUAL_DATA_DIR,
                                                  #video_record.participant,
                                                  video_record.untrimmed_video_name)

@@ -62,10 +62,9 @@ class Epickitchens(torch.utils.data.Dataset):
         self._spatial_temporal_idx = []
         iii = 0
 
-        if self.cfg.TEST.SLIDE.ENABLE:
-            # get the video duration
-            video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
-            video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
+        # get the video duration
+        video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
+        video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
         if not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
             video_times = {}
         for file in path_annotations_pickle:
@@ -74,6 +73,7 @@ class Epickitchens(torch.utils.data.Dataset):
                     for idx in range(self._num_clips):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
                         self._spatial_temporal_idx.append(idx)
+                        self._video_records[-1].time_end = video_durs[tup[1]['video_id']]
                 else:
 
                     # get the action start and end
