@@ -44,10 +44,11 @@ TEST:
   NUM_ENSEMBLE_VIEWS: 1
   SLIDE:
     ENABLE: True
-    WIN_SIZE: 1.0
+    WIN_SIZE: 0.5
     HOP_SIZE: 0.5
     LABEL_FRAME: 0.5
-    INSIDE_ACTION_BOUNDS: 'strict' # strict, outside, ignore
+    INSIDE_ACTION_BOUNDS: True
+    PER_ACTION_INSTANCE: True
 DATA_LOADER:
   NUM_WORKERS: 8
   PIN_MEMORY: True

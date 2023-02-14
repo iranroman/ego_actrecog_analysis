@@ -61,7 +61,12 @@ class Epickitchens(torch.utils.data.Dataset):
         self._video_records = []
         self._spatial_temporal_idx = []
         iii = 0
-        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+
+        if self.cfg.TEST.SLIDE.ENABLE:
+            # get the video duration
+            video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
+            video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
+        if not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
             video_times = {}
         for file in path_annotations_pickle:
             for tup in pd.read_pickle(file).iterrows():
@@ -70,35 +75,26 @@ class Epickitchens(torch.utils.data.Dataset):
                         self._video_records.append(EpicKitchensVideoRecord(tup))
                         self._spatial_temporal_idx.append(idx)
                 else:
+
+                    # get the action start and end
                     action_start_sec = timestamp_to_sec(tup[1]['start_timestamp'])
                     action_stop_sec = timestamp_to_sec(tup[1]['stop_timestamp'])
-                    video_durs = pd.read_csv(os.path.join(self.cfg.EPICKITCHENS.ANNOTATIONS_DIR, self.cfg.EPICKITCHENS.VIDEO_DURS))
-                    video_durs = dict(zip(video_durs['video_id'],video_durs['duration']))
-                    if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
+
+                    if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS:
                         win_start_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
                         win_stop_sec = win_start_sec + self.cfg.TEST.SLIDE.WIN_SIZE
-                    elif self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'outside':
-                        win_stop_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
-                        win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
-                    elif self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+                        win_label_sec = (win_stop_sec-win_start_sec)/2
+                    else:
                         win_label_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
                         win_start_sec = win_label_sec - self.cfg.TEST.SLIDE.LABEL_FRAME*self.cfg.TEST.SLIDE.WIN_SIZE
                         win_stop_sec = win_label_sec + (1-self.cfg.TEST.SLIDE.LABEL_FRAME)*self.cfg.TEST.SLIDE.WIN_SIZE
                     win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
-                    while (win_start_sec < action_stop_sec) if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS != 'ignore' else (win_label_sec < action_stop_sec):
+                    while (win_label_sec < action_stop_sec):
                         ek_ann = tup[1].copy()
                         ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['action_stop_frame'] = action_stop_sec * self.target_fps
-                        if win_stop_sec > action_stop_sec and self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'strict':
-                            self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
-                            self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
-                            self._spatial_temporal_idx.append(0)
-                            break
-                        win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
-                        win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
-                        win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
-                        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+                        if not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
                             # up to three sim actions per frame in validation set
                             ek_ann['verb_class'] = [ek_ann['verb_class']] * 3
                             ek_ann['noun_class'] = [ek_ann['noun_class']] * 3
@@ -122,6 +118,14 @@ class Epickitchens(torch.utils.data.Dataset):
                                     video_record._series['noun'][len(unique_verb_noun)] = ek_ann['noun'][0]
                                 self._video_records[video_times[video_timestamp]] = video_record
                             continue
+                        if win_stop_sec > action_stop_sec and self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS:
+                            self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
+                            self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
+                            self._spatial_temporal_idx.append(0)
+                            break
+                        win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                        win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
+                        win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
                         self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
                         self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
                         self._spatial_temporal_idx.append(0)
@@ -155,7 +159,7 @@ class Epickitchens(torch.utils.data.Dataset):
         print('action points', action_points)
         '''
 
-        if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS == 'ignore':
+        if self.cfg.TEST.SLIDE and not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
             for iii in range(len(self._video_records)):
                 self._video_records[iii]._series['noun_class'] = np.array(self._video_records[iii]._series['noun_class'])
                 self._video_records[iii]._series['verb_class'] = np.array(self._video_records[iii]._series['verb_class'])

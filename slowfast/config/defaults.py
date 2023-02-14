@@ -86,7 +86,8 @@ _C.TEST.SLIDE.ENABLE = False
 _C.TEST.SLIDE.WIN_SIZE = 1.
 _C.TEST.SLIDE.HOP_SIZE = 1.
 _C.TEST.SLIDE.LABEL_FRAME = 0.5
-_C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = ''
+_C.TEST.SLIDE.INSIDE_ACTION_BOUNDS = True
+_C.TEST.SLIDE.PER_ACTION_INSTANCE = True
 
 # -----------------------------------------------------------------------------
 # ResNet options
