@@ -83,13 +83,14 @@ class Epickitchens(torch.utils.data.Dataset):
                     if self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS:
                         win_start_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
                         win_stop_sec = win_start_sec + self.cfg.TEST.SLIDE.WIN_SIZE
-                        win_label_sec = (win_stop_sec-win_start_sec)/2
+                        win_label_sec = win_start_sec + self.cfg.TEST.SLIDE.LABEL_FRAME*self.cfg.TEST.SLIDE.WIN_SIZE
                     else:
                         win_label_sec = self.cfg.TEST.SLIDE.HOP_SIZE*np.ceil(action_start_sec/self.cfg.TEST.SLIDE.HOP_SIZE)
                         win_start_sec = win_label_sec - self.cfg.TEST.SLIDE.LABEL_FRAME*self.cfg.TEST.SLIDE.WIN_SIZE
                         win_stop_sec = win_label_sec + (1-self.cfg.TEST.SLIDE.LABEL_FRAME)*self.cfg.TEST.SLIDE.WIN_SIZE
                     win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
-                    while (win_label_sec < action_stop_sec):
+                    win_label_sec = win_label_sec if win_label_sec > 0.0  else 0.0
+                    while (win_label_sec < action_stop_sec) if not self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS else True:
                         ek_ann = tup[1].copy()
                         ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
@@ -124,8 +125,10 @@ class Epickitchens(torch.utils.data.Dataset):
                             self._spatial_temporal_idx.append(0)
                             break
                         win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                        win_label_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                         win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
                         win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
+                        win_label_sec = win_label_sec if win_label_sec > 0.0  else 0.0
                         self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
                         self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
                         self._spatial_temporal_idx.append(0)
