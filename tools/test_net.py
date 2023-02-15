@@ -165,6 +165,7 @@ def test(cfg):
             cfg.TEST.NUM_ENSEMBLE_VIEWS * cfg.TEST.NUM_SPATIAL_CROPS,
             cfg.MODEL.NUM_CLASSES,
             len(test_loader),
+            weight_instance_by_nframes=cfg.TEST.WEIGHT_INSTANCE_BY_NFRAMES,
         )
     else:
         test_meter = EPICTestMeter(
@@ -172,7 +173,7 @@ def test(cfg):
             1, # each window plays an equal weight on the metrics
             cfg.MODEL.NUM_CLASSES,
             len(test_loader),
-            cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS
+            cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS,
         )
 
 

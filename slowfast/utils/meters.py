@@ -26,7 +26,8 @@ class EPICTestMeter(object):
     The accuracy is calculated with the given ground truth labels.
     """
 
-    def __init__(self, num_videos, num_clips, num_cls, overall_iters, inside_action_bounds=''):
+    def __init__(self, num_videos, num_clips, num_cls, overall_iters, 
+            inside_action_bounds=True, weight_instance_by_nframes=False):
         """
         Construct tensors to store the predictions and labels. Expect to get
         num_clips predictions from each video, and calculate the metrics on
@@ -43,10 +44,11 @@ class EPICTestMeter(object):
         self.num_clips = num_clips
         self.overall_iters = overall_iters
         self.inside_action_bounds = inside_action_bounds
+        self.weight_instance_by_nframes = weight_instance_by_nframes
         # Initialize tensors.
         self.verb_video_preds = torch.zeros((num_videos, num_cls[0]))
         self.noun_video_preds = torch.zeros((num_videos, num_cls[1]))
-        if self.inside_action_bounds == 'ignore':
+        if not self.inside_action_bounds:
             # up to three sim actions per frame in validation set
             self.verb_video_labels = torch.zeros((num_videos, 3)).long()
             self.noun_video_labels = torch.zeros((num_videos, 3)).long()
@@ -54,6 +56,7 @@ class EPICTestMeter(object):
             self.verb_video_labels = torch.zeros((num_videos)).long()
             self.noun_video_labels = torch.zeros((num_videos)).long()
         self.metadata = np.zeros(num_videos, dtype=object)
+        self.metadata_nframes = torch.zeros(num_videos).long()
         self.clip_count = torch.zeros((num_videos)).long()
         # Reset metric.
         self.reset()
@@ -82,6 +85,7 @@ class EPICTestMeter(object):
             clip_ids (tensor): clip indexes of the current batch, dimension is
                 N.
         """
+
         for ind in range(preds[0].shape[0]):
             vid_id = int(clip_ids[ind]) // self.num_clips
             self.verb_video_labels[vid_id] = labels[0][ind]
@@ -89,6 +93,7 @@ class EPICTestMeter(object):
             self.noun_video_labels[vid_id] = labels[1][ind]
             self.noun_video_preds[vid_id] += preds[1][ind]
             self.metadata[vid_id] = metadata['narration_id'][ind]
+            self.metadata_nframes[vid_id] = metadata['nframes'][ind]
             self.clip_count[vid_id] += 1
 
     def log_iter_stats(self, cur_iter):
@@ -113,7 +118,7 @@ class EPICTestMeter(object):
     def iter_toc(self):
         self.iter_timer.pause()
 
-    def finalize_metrics(self, ks=(1, 5), inside_action_bounds=''):
+    def finalize_metrics(self, ks=(1, 5), inside_action_bounds=True):
         """
         Calculate and log the final ensembled metrics.
         ks (tuple): list of top-k values for topk_accuracies. For example,
@@ -126,10 +131,12 @@ class EPICTestMeter(object):
                 )
             )
             logger.warning(self.clip_count)
+        if self.weight_instance_by_nframes: 
+            nframes_weights = torch.tensor([self.metadata_nframes[vid_id] for vid_id in range(len(self.noun_video_labels))])
 
-        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, inside_action_bounds)
-        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, inside_action_bounds)
-        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks, inside_action_bounds)
+        verb_topks = metrics.topk_accuracies(self.verb_video_preds, self.verb_video_labels, ks, inside_action_bounds, nframes_weights if self.weight_instance_by_nframes else None)
+        noun_topks = metrics.topk_accuracies(self.noun_video_preds, self.noun_video_labels, ks, inside_action_bounds, nframes_weights if self.weight_instance_by_nframes else None)
+        actn_topks = metrics.multitask_topk_accuracies((self.verb_video_preds,self.noun_video_preds), (self.verb_video_labels,self.noun_video_labels), ks, inside_action_bounds, nframes_weights if self.weight_instance_by_nframes else None)
 
         assert len({len(ks), len(verb_topks)}) == 1
         assert len({len(ks), len(noun_topks)}) == 1

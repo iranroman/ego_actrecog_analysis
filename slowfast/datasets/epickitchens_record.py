@@ -53,4 +53,7 @@ class EpicKitchensVideoRecord(VideoRecord):
 
     @property
     def metadata(self):
-        return {'narration_id': self._index}
+        return {
+                'narration_id': self._index, 
+                'nframes': int(self._series['stop_frame'] - self._series['start_frame'])
+                }
