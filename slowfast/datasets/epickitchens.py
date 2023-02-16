@@ -90,7 +90,7 @@ class Epickitchens(torch.utils.data.Dataset):
                         win_stop_sec = win_label_sec + (1-self.cfg.TEST.SLIDE.LABEL_FRAME)*self.cfg.TEST.SLIDE.WIN_SIZE
                     win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
                     win_label_sec = win_label_sec if win_label_sec > 0.0  else 0.0
-                    while (win_label_sec < action_stop_sec) if not self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS else True:
+                    while (win_label_sec <= action_stop_sec) if not self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS else True:
                         ek_ann = tup[1].copy()
                         ek_ann['start_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_start_sec)).strftime('%H:%M:%S.%f')
                         ek_ann['stop_timestamp'] = (datetime.datetime.min + datetime.timedelta(seconds=win_stop_sec)).strftime('%H:%M:%S.%f')
@@ -102,7 +102,6 @@ class Epickitchens(torch.utils.data.Dataset):
                             ek_ann['verb'] = [ek_ann['verb']] * 3
                             ek_ann['noun'] = [ek_ann['noun']] * 3
                             video_timestamp = f'{ek_ann["video_id"]}_{win_label_sec:.2f}'
-                            win_label_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                             if video_timestamp not in video_times:
                                 video_times[video_timestamp] = iii
                                 self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
@@ -118,21 +117,24 @@ class Epickitchens(torch.utils.data.Dataset):
                                     video_record._series['verb'][len(unique_verb_noun)] = ek_ann['verb'][0]
                                     video_record._series['noun'][len(unique_verb_noun)] = ek_ann['noun'][0]
                                 self._video_records[video_times[video_timestamp]] = video_record
+                            if win_stop_sec > action_stop_sec and self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS:
+                                break
+                            win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                            win_label_sec += self.cfg.TEST.SLIDE.HOP_SIZE
+                            win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
+                            win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
+                            win_label_sec = win_label_sec if win_label_sec > 0.0  else 0.0
                             continue
+                        self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
+                        self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
+                        self._spatial_temporal_idx.append(0)
                         if win_stop_sec > action_stop_sec and self.cfg.TEST.SLIDE.INSIDE_ACTION_BOUNDS:
-                            self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
-                            self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
-                            self._spatial_temporal_idx.append(0)
                             break
                         win_stop_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                         win_label_sec += self.cfg.TEST.SLIDE.HOP_SIZE
                         win_start_sec = win_stop_sec - self.cfg.TEST.SLIDE.WIN_SIZE
                         win_start_sec = win_start_sec if win_start_sec > 0.0  else 0.0
                         win_label_sec = win_label_sec if win_label_sec > 0.0  else 0.0
-                        self._video_records.append(EpicKitchensVideoRecord((tup[0],ek_ann)))
-                        self._video_records[-1].time_end = video_durs[ek_ann['video_id']]
-                        self._spatial_temporal_idx.append(0)
-                        iii += 1
 
         '''
         #
@@ -162,7 +164,7 @@ class Epickitchens(torch.utils.data.Dataset):
         print('action points', action_points)
         '''
 
-        if self.cfg.TEST.SLIDE and not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
+        if self.cfg.TEST.SLIDE.ENABLE and not self.cfg.TEST.SLIDE.PER_ACTION_INSTANCE:
             for iii in range(len(self._video_records)):
                 self._video_records[iii]._series['noun_class'] = np.array(self._video_records[iii]._series['noun_class'])
                 self._video_records[iii]._series['verb_class'] = np.array(self._video_records[iii]._series['verb_class'])
